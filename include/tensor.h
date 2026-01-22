@@ -1,0 +1,25 @@
+#ifndef TENSOR_H
+#define TENSOR_H
+
+#include "utils.h"
+
+#include <stdbool.h>
+
+typedef struct {
+    u32 shape[4];
+    u32 stride[4];
+    usize data_len;
+    f32* data;
+} Tensor;
+
+Tensor* create_tensor(u32* shape, usize rank);
+void free_tensor(Tensor* t);
+
+void print_tensor(const Tensor* t, bool print_data);
+void randomize_tensor(Tensor* t, f32 min, f32 max);
+
+Tensor* add_tensor(const Tensor* a, const Tensor* b);
+Tensor* mul_tensor(const Tensor* a, const Tensor* b);
+
+
+#endif

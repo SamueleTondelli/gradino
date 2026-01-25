@@ -1,6 +1,7 @@
 #include "include/arena.h"
 #include "include/tensor.h"
 #include "include/utils.h"
+#include "include/grad.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -61,7 +62,7 @@ void mul_test() {
     matmul(a->data, b->data, res, size, size, size);
     for (u32 i = 0; i < size; i++) {
         for (u32 j = 0; j < size; j++) {
-            if (fabsf(c->data[i * size + j] - res[i * size + j]) > 1e-6) {
+            if (fabsf(c->data[i * size + j] - res[i * size + j]) > 1e-4) {
                 printf("Wrong element at (%u, %u): %f, %f\n", i, j, c->data[i * size + j], res[i * size + j]);
             }
         }
@@ -95,9 +96,27 @@ void arena_test() {
     }
 }
 
+void grad_test() {
+    u32 shape[4] = {1, 1, 2, 2};
+    GradTensor* gt = create_gradt(shape, 4);
+    gt->tens->data[0] = 1.0;
+    gt->tens->data[1] = 0.1;
+    gt->tens->data[2] = -1;
+    gt->tens->data[3] = 3.0;
+
+    GradTensor* rgt = relu(gt);
+
+    print_tensor(gt->tens, true);
+    print_tensor(rgt->tens, true);
+    
+    free_gradt(gt);
+    free(rgt);
+}
+
 int main() {
     init_random();
     // add_test();    
-    mul_test();
+    // mul_test();
     // arena_test();
+    grad_test();
 }

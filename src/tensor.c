@@ -7,20 +7,20 @@
 #include <stdbool.h>
 #include <immintrin.h>
 
-Tensor* create_tensor(u32* shape, usize rank) {
-    if (rank > 4) {
+Tensor* create_tensor(u32* shape, usize shape_len) {
+    if (shape_len > 4) {
         return NULL;
     }
     Tensor* t = malloc(sizeof(Tensor));
     u32 curr_stride = 1;
-    for (usize i = 0; i < rank; i++) {
-        u32 dim = shape[rank - i - 1];
+    for (usize i = 0; i < shape_len; i++) {
+        u32 dim = shape[shape_len - i - 1];
         t->shape[3-i] = dim;
         t->stride[3-i] = dim == 1 ? 0 : curr_stride;
         curr_stride *= dim;
     }
 
-    for (usize i = rank; i < 4; i++) {
+    for (usize i = shape_len; i < 4; i++) {
         t->shape[3-i] = 1;
         t->stride[3-i] = curr_stride;
     }
@@ -152,44 +152,43 @@ Tensor* add_tensor(const Tensor* a, const Tensor* b) {
     return result;
 }
 
-// ~880ms
-static void matmul(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
-    for (u32 i = 0; i < a_rows; i++) {
-        for (u32 j = 0; j < b_cols; j++) {
-            f32 el = 0.0;
-            for (u32 k = 0; k < a_cols; k++) {
-                el += a[i * a_cols + k] * b[k * b_cols + j];
-            }
-            res[i * b_cols + j] = el;
-        }
-    }
-}
+// static void matmul(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
+//     for (u32 i = 0; i < a_rows; i++) {
+//         for (u32 j = 0; j < b_cols; j++) {
+//             f32 el = 0.0;
+//             for (u32 k = 0; k < a_cols; k++) {
+//                 el += a[i * a_cols + k] * b[k * b_cols + j];
+//             }
+//             res[i * b_cols + j] = el;
+//         }
+//     }
+// }
 
-static void matmul_vec(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
-    for (u32 i = 0; i < a_rows; i++) {
-        for (u32 j = 0; j < b_cols; j++) {
-            u32 k = 0;
-            i32 b_idxs[16];
-            __m512 a_vec, b_vec, el_vec;
-            el_vec = _mm512_setzero_ps();
-            for (; k < a_cols - 15; k += 16) {
-                a_vec = _mm512_loadu_ps(&a[i * a_cols + k]);
-                for (i32 bk = 0; bk < 16; bk++) {
-                    b_idxs[bk] = (bk + k) * b_cols + j;
-                }
-                __m512i b_idxs_vec = _mm512_loadu_si512(b_idxs);
-                b_vec = _mm512_i32gather_ps(b_idxs_vec, b, 4);
-                el_vec = _mm512_fmadd_ps(a_vec, b_vec, el_vec);
-            }
+// static void matmul_vec(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
+//     for (u32 i = 0; i < a_rows; i++) {
+//         for (u32 j = 0; j < b_cols; j++) {
+//             u32 k = 0;
+//             i32 b_idxs[16];
+//             __m512 a_vec, b_vec, el_vec;
+//             el_vec = _mm512_setzero_ps();
+//             for (; k < a_cols - 15; k += 16) {
+//                 a_vec = _mm512_loadu_ps(&a[i * a_cols + k]);
+//                 for (i32 bk = 0; bk < 16; bk++) {
+//                     b_idxs[bk] = (bk + k) * b_cols + j;
+//                 }
+//                 __m512i b_idxs_vec = _mm512_loadu_si512(b_idxs);
+//                 b_vec = _mm512_i32gather_ps(b_idxs_vec, b, 4);
+//                 el_vec = _mm512_fmadd_ps(a_vec, b_vec, el_vec);
+//             }
 
-            f32 el = _mm512_reduce_add_ps(el_vec);
-            for (; k < a_cols; k++) {
-                el += a[i * a_cols + k] * b[k * b_cols + j];
-            }
-            res[i * b_cols + j] = el;
-        }
-    }
-}
+//             f32 el = _mm512_reduce_add_ps(el_vec);
+//             for (; k < a_cols; k++) {
+//                 el += a[i * a_cols + k] * b[k * b_cols + j];
+//             }
+//             res[i * b_cols + j] = el;
+//         }
+//     }
+// }
 
 static inline void mmul_6x16(const f32* a, const f32* b, f32* res, u32 a_cols, u32 b_cols, u32 n, u32 m) {
     __m512 res_tile[6];
@@ -285,4 +284,30 @@ Tensor* mul_tensor(const Tensor* a, const Tensor* b) {
         mat_idx++;
     }
     return result;
+}
+
+void relu_tensor(const Tensor* src, Tensor* dst) {
+    for (usize i = 0; i < 4; i++) {
+        if (src->shape[i] != dst->shape[i]) {
+            printf("Bad shape in relu_tensor\n");
+            return;
+        }
+    }
+
+    for (usize i = 0; i < src->data_len; i++) {
+        dst->data[i] = (src->data[i] > 0.0) ? src->data[i] : 0.0;
+    }
+}
+
+void relu_bwd_tensot(const Tensor* src, Tensor* src_grad, const Tensor* in_grad) {
+    for (usize i = 0; i < 4; i++) {
+        if (src->shape[i] != src_grad->shape[i] || src_grad->shape[i] != in_grad->shape[i] || src->shape[i] != in_grad->shape[i]) {
+            printf("Bad shape in relu_bwd_tensor\n");
+            return;
+        }
+    }
+
+    for (usize i = 0; i < src->data_len; i++) {
+        src_grad->data[i] = (src->data[i] > 0.0) ? in_grad->data[i] : 0.0;
+    }
 }

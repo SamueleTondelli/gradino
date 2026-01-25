@@ -12,8 +12,10 @@ typedef struct GradTensor_struct {
 } GradTensor;
 
 GradTensor* create_gradt(u32* shape, usize shape_len);
+GradTensor* create_gradt_from_tens(Tensor* tens);
 void free_gradt(GradTensor* gt);
 
 GradTensor* relu(GradTensor* gt);
+GradTensor* add(GradTensor* gt1, GradTensor* gt2);
 
 #endif

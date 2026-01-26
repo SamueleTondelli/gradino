@@ -42,7 +42,7 @@ static void matmul(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols,
 }
 
 void mul_test() {
-    u32 size = 512;
+    u32 size = 256;
     u32 a_shape[] = {1, 1, size, size};
     Tensor* a = create_tensor(a_shape, 4);
 
@@ -186,8 +186,8 @@ void grad_test() {
 int main() {
     init_random();
     // add_test();    
-    // mul_test();
-    mul_tr_test();
+    mul_test();
+    // mul_tr_test();
     // arena_test();
     // grad_test();
 }

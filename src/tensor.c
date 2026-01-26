@@ -268,7 +268,21 @@ void _relu_tensor_kernel(const Tensor* src, Tensor* dst) {
         }
     }
 
-    for (usize i = 0; i < src->data_len; i++) {
+    // for (usize i = 0; i < src->data_len; i++) {
+    //     dst->data[i] = (src->data[i] > 0.0) ? src->data[i] : 0.0;
+    // }
+
+    u32 vecs = src->data_len / 16;
+    usize i = 0;
+    __m512 zerov = _mm512_setzero_ps();
+    for (u32 iv = 0; iv < vecs; iv++) {
+        __m512 srcv = _mm512_loadu_ps(&src->data[i]);
+        srcv = _mm512_max_ps(srcv, zerov);
+        _mm512_storeu_ps(&dst->data[i], srcv);
+        i += 16;
+    }
+
+    for (; i < src->data_len; i++) {
         dst->data[i] = (src->data[i] > 0.0) ? src->data[i] : 0.0;
     }
 }
@@ -281,7 +295,22 @@ void _relu_bwd_tensor_kernel(const Tensor* src, Tensor* src_grad, const Tensor* 
         }
     }
 
-    for (usize i = 0; i < src->data_len; i++) {
+    // for (usize i = 0; i < src->data_len; i++) {
+    //     src_grad->data[i] = (src->data[i] > 0.0) ? in_grad->data[i] : 0.0;
+    // }
+    u32 vecs = src->data_len / 16;
+    usize i = 0;
+    __m512 zerov = _mm512_setzero_ps();
+    for (u32 iv = 0; iv < vecs; iv++) {
+        __m512 srcv = _mm512_loadu_ps(&src->data[i]);
+        __m512 ingv = _mm512_loadu_ps(&in_grad->data[i]);
+        __mmask16 mask = _mm512_cmp_ps_mask(srcv, zerov, _CMP_GT_OQ);
+        ingv = _mm512_maskz_mov_ps(mask, ingv);
+        _mm512_storeu_ps(&src_grad->data[i], ingv);
+        i += 16;
+    }
+    
+    for (; i < src->data_len; i++) {
         src_grad->data[i] = (src->data[i] > 0.0) ? in_grad->data[i] : 0.0;
     }
 }

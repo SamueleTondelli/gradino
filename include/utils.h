@@ -21,9 +21,15 @@ typedef double f64;
 #define KiB(n) ((u64)(n) << 10)
 #define MiB(n) ((u64)(n) << 20)
 #define GiB(n) ((u64)(n) << 30)
- 
+#define UNIMPL() do { \
+    fprintf(stderr, "NOT IMPLEMENTED: %s\n", __PRETTY_FUNCTION__); \
+    fprintf(stderr, "Location: %s:%d\n", __FILE__, __LINE__); \
+    exit(1); \
+} while(0)
+
 void init_random();
 f32 random_f32(f32 min, f32 max);
 u64 perf_counter_ns();
+
 
 #endif

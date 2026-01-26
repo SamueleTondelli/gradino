@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -g -Iinclude -mavx512f
-# CFLAGS += -O3
+CFLAGS += -O3
 # CFLAGS += -lprofiler 
 
 BUILD_DIR = build

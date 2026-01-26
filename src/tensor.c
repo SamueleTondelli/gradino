@@ -65,7 +65,7 @@ void randomize_tensor(Tensor* t, f32 min, f32 max) {
     }   
 }
 
-void _add_tensor_inplace(const Tensor* a, const Tensor* b, Tensor* result) {
+void _add_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     if (a->shape[3] == b->shape[3] && a->shape[3] >= 16) {
         usize total_rows = result->shape[0] * result->shape[1] * result->shape[2];
@@ -151,11 +151,11 @@ Tensor* add_tensor(const Tensor* a, const Tensor* b) {
     }
 
     Tensor* result = create_tensor(target_shape, 4);
-    _add_tensor_inplace(a, b, result);
+    _add_tensor_kernel(a, b, result);
     return result;
 }
 
-void _add_tensor_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad) {
+void _add_tensor_bwd_kernel(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad) {
     memcpy(a_grad->data, in_grad->data, a_grad->data_len);
     memcpy(b_grad->data, in_grad->data, b_grad->data_len);
 }
@@ -210,7 +210,7 @@ static void matmul_tile6x16(const f32* a, const f32* b, f32* res, u32 a_rows, u3
     }
 }
 
-void _mul_tensor_inplace(const Tensor* a, const Tensor* b, Tensor* result) {
+void _mul_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     usize mat_idx = 0, total_mats = result->shape[0] * result->shape[1];
     while (mat_idx < total_mats) {
@@ -256,11 +256,11 @@ Tensor* mul_tensor(const Tensor* a, const Tensor* b) {
     target_shape[2] = a->shape[2];
     target_shape[3] = b->shape[3];
     Tensor* result = create_tensor(target_shape, 4);
-    _mul_tensor_inplace(a, b, result);
+    _mul_tensor_kernel(a, b, result);
     return result;
 }
 
-void _relu_tensor(const Tensor* src, Tensor* dst) {
+void _relu_tensor_kernel(const Tensor* src, Tensor* dst) {
     for (usize i = 0; i < 4; i++) {
         if (src->shape[i] != dst->shape[i]) {
             printf("Bad shape in relu_tensor\n");
@@ -273,7 +273,7 @@ void _relu_tensor(const Tensor* src, Tensor* dst) {
     }
 }
 
-void _relu_bwd_tensor(const Tensor* src, Tensor* src_grad, const Tensor* in_grad) {
+void _relu_bwd_tensor_kernel(const Tensor* src, Tensor* src_grad, const Tensor* in_grad) {
     for (usize i = 0; i < 4; i++) {
         if (src->shape[i] != src_grad->shape[i] || src_grad->shape[i] != in_grad->shape[i] || src->shape[i] != in_grad->shape[i]) {
             printf("Bad shape in relu_bwd_tensor\n");
@@ -284,4 +284,114 @@ void _relu_bwd_tensor(const Tensor* src, Tensor* src_grad, const Tensor* in_grad
     for (usize i = 0; i < src->data_len; i++) {
         src_grad->data[i] = (src->data[i] > 0.0) ? in_grad->data[i] : 0.0;
     }
+}
+
+void _mul_tensor_at_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+    UNIMPL();
+}
+
+static void matmul_bt(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
+    u32 vecs = a_cols / 16;
+    for (u32 i = 0; i < a_rows; i++) {
+        for (u32 j = 0; j < b_cols; j++) {
+            u32 k = 0;
+            __m512 av, bv;
+            __m512 acc = _mm512_setzero_ps();
+            for (u32 kv = 0; kv < vecs; kv++) {
+                // printf("i: %d, j: %d, k: %d, a[%d], b[%d]\n", i, j, k, i*a_cols + k, j*a_cols + k);
+                av = _mm512_loadu_ps(&a[i * a_cols + k]);
+                bv = _mm512_loadu_ps(&b[j * a_cols + k]);
+                acc = _mm512_fmadd_ps(av, bv, acc);
+                k += 16;
+            }
+            // printf("finished vec sumadd\n");
+            f32 el = _mm512_reduce_add_ps(acc);
+            for (; k < a_cols; k++) {
+                // printf("i: %d, j: %d, k: %d, a[%d], b[%d]\n", i, j, k, i*a_cols + k, j*a_cols + k);
+                el += a[i * a_cols + k] * b[j * a_cols + k];
+            }
+            // printf("res[%d] = %f\n", i*b_cols + j, el);
+            res[i * b_cols + j] = el;
+        }
+    }
+}
+
+void _mul_tensor_bt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+    u32 index[4] = {0, 0, 0, 0};
+    usize mat_idx = 0, total_mats = result->shape[0] * result->shape[1];
+    while (mat_idx < total_mats) {
+        u32 a_offset = 0, b_offset = 0, res_offset = 0;
+        for (int i = 0; i < 2; i++) {
+            a_offset += index[i] * a->stride[i];
+            b_offset += index[i] * b->stride[i];
+            res_offset += index[i] * result->stride[i];
+        }
+
+        matmul_bt(&a->data[a_offset], &b->data[b_offset], &result->data[res_offset], a->shape[2], a->shape[3], b->shape[2]);
+            
+        for (int i = 1; i >= 0; i--) {
+            index[i]++;
+            if (index[i] < result->shape[i]) {
+                break;
+            } else {
+                index[i] = 0;
+            }
+        }
+        mat_idx++;
+    }
+}
+
+void _mul_tensor_atbt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+    UNIMPL();
+}
+
+Tensor* mul_tensor_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
+    u32 target_shape[4];
+    for (int i = 0; i < 2; i++) {
+        if (a->shape[i] == b->shape[i]) {
+            target_shape[i] = a->shape[i];
+        } else if (a->shape[i] == 1) {
+            target_shape[i] = b->shape[i];
+        } else if (b->shape[i] == 1) {
+            target_shape[i] = a->shape[i];
+        } else {
+            return NULL;
+        }
+    }
+
+    Tensor* result = NULL;
+    if (at && !bt) {
+        if (a->shape[2] != b->shape[2]) {
+            return NULL;
+        }
+        target_shape[2] = a->shape[3];
+        target_shape[3] = b->shape[3];
+        result = create_tensor(target_shape, 4);
+        _mul_tensor_at_kernel(a, b, result);
+    } else if (!at && bt) {
+        if (a->shape[3] != b->shape[3]) {
+            return NULL;
+        } 
+        target_shape[2] = a->shape[2];
+        target_shape[3] = b->shape[2];
+        result = create_tensor(target_shape, 4);
+        _mul_tensor_bt_kernel(a, b, result);
+    } else if (at && bt) {
+        if (a->shape[2] != b->shape[3]) {
+            return NULL;
+        }
+        target_shape[2] = a->shape[3];
+        target_shape[3] = b->shape[2];
+        result = create_tensor(target_shape, 4);
+        _mul_tensor_atbt_kernel(a, b, result);
+    } else {
+        if (a->shape[3] != b->shape[2]) {
+            return NULL;
+        }
+        target_shape[2] = a->shape[2];
+        target_shape[3] = b->shape[3];
+        result = create_tensor(target_shape, 4);
+        _mul_tensor_kernel(a, b, result);
+    }
+    return result;
 }

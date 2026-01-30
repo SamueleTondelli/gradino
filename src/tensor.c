@@ -25,6 +25,7 @@ Tensor* create_tensor(u32* shape, usize shape_len) {
         t->stride[3-i] = curr_stride;
     }
     t->data_len = curr_stride;
+    printf("Allocating %d\n", curr_stride);
     t->data = malloc(sizeof(f32) * curr_stride);
     return t;
 }
@@ -315,8 +316,75 @@ void _relu_bwd_tensor_kernel(const Tensor* src, Tensor* src_grad, const Tensor* 
     }
 }
 
+static void mmul_6x16_at(const f32* a, const f32* b, f32* res, u32 at_rows, u32 b_rows, u32 b_cols, int n, int m) {
+    __m512 res_tile[6];
+    for (u32 i = 0; i < 6; i++) {
+        res_tile[i] = _mm512_setzero_ps();
+    }
+
+    if (m == 16) {
+        for (u32 k = 0; k < b_rows; k++) {
+            __m512 b_vec = _mm512_loadu_ps(&b[k * b_cols]);
+
+            for (u32 i = 0; i < n; i++) {
+                __m512 a_vec = _mm512_set1_ps(a[at_rows * k + i]);
+                res_tile[i] = _mm512_fmadd_ps(a_vec, b_vec, res_tile[i]);
+            }
+        }
+
+        for (u32 i = 0; i < n; i++) {
+            _mm512_storeu_ps(&res[i * b_cols], res_tile[i]);
+        }
+    } else {
+        __mmask16 mask = 0xFFFF >> (16 - m);
+        for (u32 k = 0; k < b_rows; k++) {
+            __m512 b_vec = _mm512_maskz_loadu_ps(mask, &b[k * b_cols]);
+
+            for (u32 i = 0; i < n; i++) {
+                __m512 a_vec = _mm512_set1_ps(a[at_rows * k + i]);
+                res_tile[i] = _mm512_fmadd_ps(a_vec, b_vec, res_tile[i]);
+            }
+        }
+
+        for (u32 i = 0; i < n; i++) {
+            _mm512_storeu_ps(&res[i * b_cols], res_tile[i]);
+        }
+    }
+}
+
+static void matmul_at(const f32* a, const f32* b, f32* res, u32 at_rows, u32 at_cols, u32 b_cols) {
+    for (u32 i = 0; i < at_rows; i += 6) {
+        u32 n = (at_rows - i) >= 6 ? 6 : (at_rows - i);
+        for (u32 j = 0; j < b_cols; j += 16) {
+            u32 m = (b_cols - j) >= 16 ? 16 : (b_cols - j);
+            mmul_6x16_at(&a[i], &b[j], &res[i * b_cols + j], at_rows, at_cols, b_cols, n, m);
+        }
+    }
+}
+
 void _mul_tensor_at_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
-    UNIMPL();
+    u32 index[4] = {0, 0, 0, 0};
+    usize mat_idx = 0, total_mats = result->shape[0] * result->shape[1];
+    while (mat_idx < total_mats) {
+        u32 a_offset = 0, b_offset = 0, res_offset = 0;
+        for (int i = 0; i < 2; i++) {
+            a_offset += index[i] * a->stride[i];
+            b_offset += index[i] * b->stride[i];
+            res_offset += index[i] * result->stride[i];
+        }
+
+        matmul_at(&a->data[a_offset], &b->data[b_offset], &result->data[res_offset], a->shape[3], a->shape[2], b->shape[3]);
+            
+        for (int i = 1; i >= 0; i--) {
+            index[i]++;
+            if (index[i] < result->shape[i]) {
+                break;
+            } else {
+                index[i] = 0;
+            }
+        }
+        mat_idx++;
+    }
 }
 
 static void matmul_bt(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {

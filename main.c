@@ -110,12 +110,12 @@ static void matmul_atbt(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_
     }
 }
 
-void mul_tr_test() {
+void mul_bt_test() {
     u32 size = 512;
-    u32 a_shape[] = {1, 1, size, size};
+    u32 a_shape[] = {1, 1, size, size/2};
     Tensor* a = create_tensor(a_shape, 4);
 
-    u32 b_shape[] = {1, 1, size, size};
+    u32 b_shape[] = {1, 1, size, size/2};
     Tensor* b = create_tensor(b_shape, 4);
 
     randomize_tensor(a, 0.0, 1.0);
@@ -128,7 +128,41 @@ void mul_tr_test() {
     printf("Vec Multiplication Bt took %.3fms\n", elapsed/1000000.0);
     
     f32* res = malloc(size * size * sizeof(f32));
-    matmul_bt(a->data, b->data, res, size, size, size);
+    matmul_bt(a->data, b->data, res, size, size/2, size);
+    for (u32 i = 0; i < size; i++) {
+        for (u32 j = 0; j < size; j++) {
+            if (fabsf(c->data[i * size + j] - res[i * size + j]) > 1e-4) {
+                printf("Wrong element at (%u, %u): %f, %f\n", i, j, c->data[i * size + j], res[i * size + j]);
+                return;
+            }
+        }
+    }
+
+    free(res);
+    free_tensor(a);
+    free_tensor(b);
+    free_tensor(c);
+}
+
+void mul_at_test() {
+    u32 size = 512;
+    u32 a_shape[] = {1, 1, size/2, size};
+    Tensor* a = create_tensor(a_shape, 4);
+
+    u32 b_shape[] = {1, 1, size/2, size};
+    Tensor* b = create_tensor(b_shape, 4);
+
+    randomize_tensor(a, 0.0, 1.0);
+    randomize_tensor(b, 0.0, 1.0);
+
+    double start = perf_counter_ns();
+    Tensor* c = mul_tensor_tr(a, b, true, false);
+    double elapsed = perf_counter_ns() - start;
+    print_tensor(c, false);
+    printf("Vec Multiplication At took %.3fms\n", elapsed/1000000.0);
+    
+    f32* res = malloc(size * size * sizeof(f32));
+    matmul_at(a->data, b->data, res, size, size/2, size);
     for (u32 i = 0; i < size; i++) {
         for (u32 j = 0; j < size; j++) {
             if (fabsf(c->data[i * size + j] - res[i * size + j]) > 1e-4) {
@@ -186,8 +220,9 @@ void grad_test() {
 int main() {
     init_random();
     // add_test();    
-    mul_test();
-    // mul_tr_test();
+    // mul_test();
+    // mul_bt_test();
+    mul_at_test();
     // arena_test();
     // grad_test();
 }

@@ -71,3 +71,21 @@ void op_set_add(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct
     op->op.bin.fwd = add_fwd;
     op->op.bin.bwd = add_bwd;
 }
+
+static void mul_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* dst) {
+    _mul_tensor_kernel(src1->tens, src2->tens, dst->tens);
+}
+
+static void mul_bwd(GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
+    _mul_tensor_bt_kernel(dst->grad, src2->tens, src1->grad);
+    _mul_tensor_at_kernel(src1->tens, dst->grad, src1->grad);
+}
+
+void op_set_mul(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {
+    op->type = Binary;
+    op->op.bin.src1 = src1;
+    op->op.bin.src2 = src2;
+    op->op.bin.dst = dst;
+    op->op.bin.fwd = mul_fwd;
+    op->op.bin.bwd = mul_bwd;
+}

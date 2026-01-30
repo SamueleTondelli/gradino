@@ -1,4 +1,5 @@
 #include "../include/grad.h"
+#include <stdbool.h>
 
 
 GradTensor* create_gradt(u32* shape, usize shape_len) {
@@ -38,5 +39,12 @@ GradTensor* add(GradTensor* gt1, GradTensor* gt2) {
     Tensor* tens = add_tensor(gt1->tens, gt2->tens);
     GradTensor* gt = create_gradt_from_tens(tens);
     op_set_add(&gt->op, gt1, gt2, gt);
+    return gt;
+}
+
+GradTensor* mul(GradTensor* gt1, GradTensor* gt2) {
+    Tensor* tens = mul_tensor_tr(gt1->tens, gt2->tens, false, false);
+    GradTensor* gt = create_gradt_from_tens(tens);
+    op_set_mul(&gt->op, gt1, gt2, gt);
     return gt;
 }

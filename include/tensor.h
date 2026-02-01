@@ -28,6 +28,7 @@ void _mul_tensor_at_kernel(const Tensor* a, const Tensor* b, Tensor* result);
 void _mul_tensor_bt_kernel(const Tensor* a, const Tensor* b, Tensor* result);
 void _mul_tensor_atbt_kernel(const Tensor* a, const Tensor* b, Tensor* result);
 Tensor* mul_tensor_tr(const Tensor* a, const Tensor* b, bool at, bool bt);
+Tensor* reduce_add_tensro(const Tensor* src, usize* dims, usize dims_len);
 
 void _relu_tensor_kernel(const Tensor* src, Tensor* dst);
 void _relu_bwd_tensor_kernel(const Tensor* src, Tensor* src_grad, const Tensor* in_grad);

@@ -17,6 +17,7 @@ void free_tensor(Tensor* t);
 
 void print_tensor(const Tensor* t, bool print_data);
 void randomize_tensor(Tensor* t, f32 min, f32 max);
+void set_tensor(Tensor* t, f32 v);
 
 void _add_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result);
 Tensor* add_tensor(const Tensor* a, const Tensor* b);

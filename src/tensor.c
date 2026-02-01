@@ -66,6 +66,12 @@ void randomize_tensor(Tensor* t, f32 min, f32 max) {
     }   
 }
 
+void set_tensor(Tensor* t, f32 v) {
+    for (usize i = 0; i < t->data_len; i++) {
+        t->data[i] = v;
+    }
+}
+
 void _add_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     if (a->shape[3] == b->shape[3] && a->shape[3] >= 16) {

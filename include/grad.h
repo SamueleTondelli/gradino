@@ -17,5 +17,6 @@ void free_gradt(GradTensor* gt);
 
 GradTensor* relu(GradTensor* gt);
 GradTensor* add(GradTensor* gt1, GradTensor* gt2);
+void backward(GradTensor* gt);
 
 #endif

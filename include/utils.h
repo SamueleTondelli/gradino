@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <stdio.h>
+#include <stdbool.h>
  
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -31,5 +32,14 @@ void init_random();
 f32 random_f32(f32 min, f32 max);
 u64 perf_counter_ns();
 
+typedef struct {
+    usize len;
+    usize cap;
+    void** ptr;
+} DynArray;
+DynArray create_dynarr(usize cap);
+void push_dynarr(DynArray* a, void* el);
+bool contains(DynArray* a, void* el);
+void free_dynarr(DynArray* a);
 
 #endif

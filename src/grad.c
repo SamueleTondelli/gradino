@@ -48,3 +48,34 @@ GradTensor* mul(GradTensor* gt1, GradTensor* gt2) {
     op_set_mul(&gt->op, gt1, gt2, gt);
     return gt;
 }
+
+static void topo_sort(GradTensor* gt, DynArray* topo, DynArray* visited) {
+    if (!contains(visited, gt)) {
+        push_dynarr(visited, gt);
+        if (gt->op.type == Mono) {
+            if (gt->op.op.mono.src != NULL) // check if it's not NOP
+                topo_sort(gt->op.op.mono.src, topo, visited);
+        } else {
+            topo_sort(gt->op.op.bin.src1, topo, visited);
+            topo_sort(gt->op.op.bin.src2, topo, visited);
+        }
+        push_dynarr(topo, gt);
+    }
+}
+
+void backward(GradTensor* gt) {
+    if (gt->tens->data_len != 1) {
+        printf("Only scalar tensors allowed in backward, got %lu length\n", gt->tens->data_len);
+    }
+    DynArray topo = create_dynarr(10);
+    DynArray visited = create_dynarr(10);
+
+    set_tensor(gt->grad, 1.0);
+    for (usize i = 0; i < topo.len; i++) {
+        GradTensor* gt = (GradTensor*)topo.ptr[topo.len - i - 1];
+        op_bwd(&gt->op);
+    }
+    
+    free_dynarr(&topo);
+    free_dynarr(&visited);
+}

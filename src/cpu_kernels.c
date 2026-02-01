@@ -326,3 +326,36 @@ void _mul_tensor_bt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
 void _mul_tensor_atbt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
     UNIMPL();
 }
+
+void _reduce_add_tensor_kernel(const Tensor* src, Tensor* result, usize red_dim) {
+    usize dims_common[3];
+    usize dims_map[3];
+    usize dims_idx = 0;
+    for (usize i = 0; i < 4; i++) {
+        if (i != red_dim) {
+            dims_common[dims_idx] = src->shape[i];
+            dims_map[dims_idx] = i;
+            dims_idx++;
+        }
+    }
+
+    for (usize i = 0; i < dims_common[0]; i++) {
+        for (usize j = 0; j < dims_common[1]; j++) {
+            for (usize k = 0; k < dims_common[2]; k++) {
+                usize src_offset = 0;
+                src_offset += i * src->stride[dims_map[0]];
+                src_offset += j * src->stride[dims_map[1]];
+                src_offset += k * src->stride[dims_map[2]];
+                usize res_offset = 0;
+                res_offset += i * result->stride[dims_map[0]];
+                res_offset += j * result->stride[dims_map[1]];
+                res_offset += k * result->stride[dims_map[2]];
+                result->data[res_offset] = 0.0;
+                for (usize r = 0; r < src->shape[red_dim]; r++) {
+                    result->data[res_offset] += src->data[src_offset];
+                    src_offset += src->stride[red_dim];
+                }
+            }
+        }
+    }
+}

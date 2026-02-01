@@ -21,10 +21,9 @@ Tensor* create_tensor(u32* shape, usize shape_len) {
 
     for (usize i = shape_len; i < 4; i++) {
         t->shape[3-i] = 1;
-        t->stride[3-i] = curr_stride;
+        t->stride[3-i] = 0;
     }
     t->data_len = curr_stride;
-    printf("Allocating %d\n", curr_stride);
     t->data = malloc(sizeof(f32) * curr_stride);
     return t;
 }
@@ -169,4 +168,17 @@ Tensor* mul_tensor_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
         _mul_tensor_kernel(a, b, result);
     }
     return result;
+}
+
+Tensor* reduce_add_tensor(const Tensor* src, usize dim) {
+    if (dim > 3) {
+        return NULL;
+    }
+
+    u32 res_shape[4];
+    memcpy(res_shape, src->shape, 4 * sizeof(u32));
+    res_shape[dim] = 1;
+    Tensor* res = create_tensor(res_shape, 4);
+    _reduce_add_tensor_kernel(src, res, dim);
+    return res;
 }

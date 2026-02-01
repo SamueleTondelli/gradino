@@ -42,7 +42,7 @@ static void matmul(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols,
 }
 
 void mul_test() {
-    u32 size = 256;
+    u32 size = 512;
     u32 a_shape[] = {1, 1, size, size};
     Tensor* a = create_tensor(a_shape, 4);
 
@@ -217,12 +217,50 @@ void grad_test() {
     free(rgt);
 }
 
+void red_add_test() {
+    u32 dim = 128;
+    u32 shape[4] = {1, 1, dim, dim};
+    Tensor* t = create_tensor(shape, 4);
+    for (u32 i = 0; i < dim; i++) {
+        for (u32 j = 0; j < dim; j++) {
+            t->data[i * shape[3] + j] = j;
+        }
+    }
+
+    double start = perf_counter_ns();
+    Tensor* red = reduce_add_tensor(t, 2);
+    double elapsed = perf_counter_ns() - start;
+    print_tensor(t, false);
+    print_tensor(red, false);
+    printf("Reduction took %.3fms\n", elapsed/1000000.0);
+
+    bool err = false;
+    for (u32 i = 0; i < dim; i++) {
+        f32 acc = 0.0;
+        for (u32 j = 0; j < dim; j++) {
+            acc += t->data[j * shape[3] + i];
+        }
+        if (fabsf(red->data[i] - acc) > 1e-4) {
+            printf("Wrong reduced element at %d: %f - %f\n", i, red->data[i], acc);
+            err = true;
+        }
+    }
+
+    if (!err) {
+        printf("Reduction correct\n");
+    }
+    
+    free_tensor(t);
+    free_tensor(red);
+}
+
 int main() {
     init_random();
-    // add_test();    
-    // mul_test();
-    // mul_bt_test();
+    add_test();
+    mul_test();
+    mul_bt_test();
     mul_at_test();
     // arena_test();
     // grad_test();
+    // red_add_test();
 }

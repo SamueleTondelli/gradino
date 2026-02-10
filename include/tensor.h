@@ -2,6 +2,7 @@
 #define TENSOR_H
 
 #include "utils.h"
+#include "arena.h"
 
 #include <stdbool.h>
 
@@ -12,17 +13,16 @@ typedef struct {
     f32* data;
 } Tensor;
 
-Tensor* tensor_create(u32* shape, usize shape_len);
-void tensor_free(Tensor* t);
+Tensor* tensor_create(u32* shape, usize shape_len, arena_allocator* arena);
 
 void tensor_print(const Tensor* t, bool print_data);
 void tensor_randomize(Tensor* t, f32 min, f32 max);
 void tensor_set(Tensor* t, f32 v);
 
-Tensor* tensor_add(const Tensor* a, const Tensor* b);
-Tensor* tensor_mul(const Tensor* a, const Tensor* b);
-Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt);
-Tensor* tensor_reduce_add(const Tensor* src, usize dim);
+Tensor* tensor_add(const Tensor* a, const Tensor* b, arena_allocator* arena);
+Tensor* tensor_mul(const Tensor* a, const Tensor* b, arena_allocator* arena);
+Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt, arena_allocator* arena);
+Tensor* tensor_reduce_add(const Tensor* src, usize dim, arena_allocator* arena);
 
 void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result);
 void _tensor_kernel_add_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad);

@@ -1,16 +1,15 @@
 #include "../include/tensor.h"
 
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
-Tensor* tensor_create(u32* shape, usize shape_len) {
+Tensor* tensor_create(u32* shape, usize shape_len, arena_allocator* arena) {
     if (shape_len > 4) {
         return NULL;
     }
-    Tensor* t = malloc(sizeof(Tensor));
+    Tensor* t = arena_alloc(arena, sizeof(Tensor), 1);
     u32 curr_stride = 1;
     for (usize i = 0; i < shape_len; i++) {
         u32 dim = shape[shape_len - i - 1];
@@ -24,13 +23,8 @@ Tensor* tensor_create(u32* shape, usize shape_len) {
         t->stride[3-i] = 0;
     }
     t->data_len = curr_stride;
-    t->data = malloc(sizeof(f32) * curr_stride);
+    t->data = arena_alloc(arena, sizeof(f32), curr_stride);
     return t;
-}
-
-void tensor_free(Tensor* t) {
-    free(t->data);
-    free(t);
 }
 
 void tensor_print(const Tensor* t, bool print_data) {
@@ -70,7 +64,7 @@ void tensor_set(Tensor* t, f32 v) {
     }
 }
 
-Tensor* tensor_add(const Tensor* a, const Tensor* b) {
+Tensor* tensor_add(const Tensor* a, const Tensor* b, arena_allocator* arena) {
     u32 target_shape[4];
     for (int i = 0; i < 4; i++) {
         if (a->shape[i] == b->shape[i]) {
@@ -84,7 +78,7 @@ Tensor* tensor_add(const Tensor* a, const Tensor* b) {
         }
     }
 
-    Tensor* result = tensor_create(target_shape, 4);
+    Tensor* result = tensor_create(target_shape, 4, arena);
     _tensor_kernel_add(a, b, result);
     return result;
 }
@@ -94,7 +88,7 @@ void _tensor_kernel_add_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_gra
     memcpy(b_grad->data, in_grad->data, b_grad->data_len);
 }
 
-Tensor* tensor_mul(const Tensor* a, const Tensor* b) {
+Tensor* tensor_mul(const Tensor* a, const Tensor* b, arena_allocator* arena) {
     u32 target_shape[4];
     for (int i = 0; i < 2; i++) {
         if (a->shape[i] == b->shape[i]) {
@@ -114,12 +108,12 @@ Tensor* tensor_mul(const Tensor* a, const Tensor* b) {
 
     target_shape[2] = a->shape[2];
     target_shape[3] = b->shape[3];
-    Tensor* result = tensor_create(target_shape, 4);
+    Tensor* result = tensor_create(target_shape, 4, arena);
     _tensor_kernel_mul(a, b, result);
     return result;
 }
 
-Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
+Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt, arena_allocator* arena) {
     u32 target_shape[4];
     for (int i = 0; i < 2; i++) {
         if (a->shape[i] == b->shape[i]) {
@@ -140,7 +134,7 @@ Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
         }
         target_shape[2] = a->shape[3];
         target_shape[3] = b->shape[3];
-        result = tensor_create(target_shape, 4);
+        result = tensor_create(target_shape, 4, arena);
         _tensor_kernel_mul_at(a, b, result);
     } else if (!at && bt) {
         if (a->shape[3] != b->shape[3]) {
@@ -148,7 +142,7 @@ Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
         } 
         target_shape[2] = a->shape[2];
         target_shape[3] = b->shape[2];
-        result = tensor_create(target_shape, 4);
+        result = tensor_create(target_shape, 4, arena);
         _tensor_kernel_mul_bt(a, b, result);
     } else if (at && bt) {
         if (a->shape[2] != b->shape[3]) {
@@ -156,7 +150,7 @@ Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
         }
         target_shape[2] = a->shape[3];
         target_shape[3] = b->shape[2];
-        result = tensor_create(target_shape, 4);
+        result = tensor_create(target_shape, 4, arena);
         _tensor_kernel_mul_atbt(a, b, result);
     } else {
         if (a->shape[3] != b->shape[2]) {
@@ -164,13 +158,13 @@ Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
         }
         target_shape[2] = a->shape[2];
         target_shape[3] = b->shape[3];
-        result = tensor_create(target_shape, 4);
+        result = tensor_create(target_shape, 4, arena);
         _tensor_kernel_mul(a, b, result);
     }
     return result;
 }
 
-Tensor* tensor_reduce_add(const Tensor* src, usize dim) {
+Tensor* tensor_reduce_add(const Tensor* src, usize dim, arena_allocator* arena) {
     if (dim > 3) {
         return NULL;
     }
@@ -178,7 +172,7 @@ Tensor* tensor_reduce_add(const Tensor* src, usize dim) {
     u32 res_shape[4];
     memcpy(res_shape, src->shape, 4 * sizeof(u32));
     res_shape[dim] = 1;
-    Tensor* res = tensor_create(res_shape, 4);
+    Tensor* res = tensor_create(res_shape, 4, arena);
     _tensor_kernel_reduce_add(src, res, dim);
     return res;
 }

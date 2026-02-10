@@ -4,6 +4,7 @@
 #include "tensor.h"
 #include "ops.h"
 #include "utils.h"
+#include "arena.h"
 
 typedef struct GradTensor_struct {
     Tensor* tens;
@@ -11,9 +12,13 @@ typedef struct GradTensor_struct {
     Op op;  // op which generates this tensor (dst = this)
 } GradTensor;
 
+void gradt_set_arena(arena_allocator* arena);
+void gradt_destroy_arena();
+void gradt_detach_arena();
+void gradt_set_and_destroy_arena(arena_allocator* arena);
+
 GradTensor* gradt_create(u32* shape, usize shape_len);
 GradTensor* gradt_create_from_tens(Tensor* tens);
-void gradt_free(GradTensor* gt);
 
 GradTensor* gradt_relu(GradTensor* gt);
 GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2);

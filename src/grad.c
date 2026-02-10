@@ -1,31 +1,46 @@
 #include "../include/grad.h"
 #include <stdbool.h>
 
+static arena_allocator* gradt_arena = NULL;
+
+void gradt_set_arena(arena_allocator* arena) {
+    gradt_arena = arena;
+}
+
+void gradt_destroy_arena() {
+    arena_destroy(gradt_arena);
+    gradt_arena = NULL;
+}
+
+void gradt_detach_arena() {
+    gradt_arena = NULL;
+}
+
+void gradt_set_and_destroy_arena(arena_allocator* arena) {
+    if (gradt_arena != NULL) {
+        arena_destroy(gradt_arena);
+    }
+    gradt_arena = arena;
+}
 
 GradTensor* gradt_create(u32* shape, usize shape_len) {
     if (shape_len > 4) {
         return NULL;
     }
 
-    GradTensor* gt = malloc(sizeof(GradTensor));
-    gt->tens = tensor_create(shape, shape_len);
-    gt->grad = tensor_create(shape, shape_len);
+    GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
+    gt->tens = tensor_create(shape, shape_len, gradt_arena);
+    gt->grad = tensor_create(shape, shape_len, gradt_arena);
     op_set_nop(&gt->op);
     return gt;
 }
 
 GradTensor* gradt_create_from_tens(Tensor* tens) {
-    GradTensor* gt = malloc(sizeof(GradTensor));
+    GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
     gt->tens = tens;
-    gt->grad = tensor_create(tens->shape, 4);
+    gt->grad = tensor_create(tens->shape, 4, gradt_arena);
     op_set_nop(&gt->op);
     return gt;
-}
-
-void gradt_free(GradTensor* gt) {
-    tensor_free(gt->tens);
-    tensor_free(gt->grad);
-    free(gt);
 }
 
 GradTensor* gradt_relu(GradTensor* gt) {
@@ -36,14 +51,14 @@ GradTensor* gradt_relu(GradTensor* gt) {
 }
 
 GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2) {
-    Tensor* tens = tensor_add(gt1->tens, gt2->tens);
+    Tensor* tens = tensor_add(gt1->tens, gt2->tens, gradt_arena);
     GradTensor* gt = gradt_create_from_tens(tens);
     op_set_add(&gt->op, gt1, gt2, gt);
     return gt;
 }
 
 GradTensor* gradt_mul(GradTensor* gt1, GradTensor* gt2) {
-    Tensor* tens = tensor_mul_tr(gt1->tens, gt2->tens, false, false);
+    Tensor* tens = tensor_mul_tr(gt1->tens, gt2->tens, false, false, gradt_arena);
     GradTensor* gt = gradt_create_from_tens(tens);
     op_set_mul(&gt->op, gt1, gt2, gt);
     return gt;
@@ -67,10 +82,11 @@ void gradt_backward(GradTensor* gt) {
     if (gt->tens->data_len != 1) {
         printf("Only scalar tensors allowed in backward, got %lu length\n", gt->tens->data_len);
     }
+    tensor_set(gt->grad, 1.0);
+    
     DynArray topo = create_dynarr(10);
     DynArray visited = create_dynarr(10);
-
-    tensor_set(gt->grad, 1.0);
+    topo_sort(gt, &topo, &visited);
     for (usize i = 0; i < topo.len; i++) {
         GradTensor* gt = (GradTensor*)topo.ptr[topo.len - i - 1];
         op_bwd(&gt->op);

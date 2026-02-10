@@ -39,14 +39,16 @@ static bool verify_data(const f32* got, const f32* expect, u32 rows, u32 cols, f
 void test_add(u32 rows, u32 cols) {
     printf("test_add [%u x %u]\n", rows, cols);
 
+    arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
+
     u32 shape[] = {1, 1, rows, cols};
-    Tensor* a = tensor_create(shape, 4);
-    Tensor* b = tensor_create(shape, 4);
+    Tensor* a = tensor_create(shape, 4, arena);
+    Tensor* b = tensor_create(shape, 4, arena);
     tensor_randomize(a, 0.0f, 1.0f);
     tensor_randomize(b, 0.0f, 1.0f);
 
     double start = perf_counter_ns();
-    Tensor* c = tensor_add(a, b);
+    Tensor* c = tensor_add(a, b, arena);
     double elapsed_ms = (perf_counter_ns() - start) / 1e6;
 
     bool ok = true;
@@ -60,12 +62,11 @@ void test_add(u32 rows, u32 cols) {
 
     printf("  %s  %.3f ms\n", ok ? "PASS" : "FAIL", elapsed_ms);
 
-    tensor_free(a);
-    tensor_free(b);
-    tensor_free(c);
+    arena_destroy(arena);
 }
 
-static void run_mul_variant(const char* label, u32 m, u32 k, u32 n, bool at, bool bt) {
+static void run_mul_variant(const char* label, u32 m, u32 k, u32 n, bool at, bool bt,
+                            arena_allocator* arena) {
     u32 a_rows = at ? k : m;
     u32 a_cols = at ? m : k;
     u32 b_rows = bt ? n : k;
@@ -74,13 +75,13 @@ static void run_mul_variant(const char* label, u32 m, u32 k, u32 n, bool at, boo
     u32 a_shape[] = {1, 1, a_rows, a_cols};
     u32 b_shape[] = {1, 1, b_rows, b_cols};
 
-    Tensor* a = tensor_create(a_shape, 4);
-    Tensor* b = tensor_create(b_shape, 4);
+    Tensor* a = tensor_create(a_shape, 4, arena);
+    Tensor* b = tensor_create(b_shape, 4, arena);
     tensor_randomize(a, 0.0f, 1.0f);
     tensor_randomize(b, 0.0f, 1.0f);
 
     double start = perf_counter_ns();
-    Tensor* c = tensor_mul_tr(a, b, at, bt);
+    Tensor* c = tensor_mul_tr(a, b, at, bt, arena);
     double elapsed_ms = (perf_counter_ns() - start) / 1e6;
 
     f32* ref = malloc(m * n * sizeof(f32));
@@ -90,27 +91,27 @@ static void run_mul_variant(const char* label, u32 m, u32 k, u32 n, bool at, boo
     printf("  %-12s %s  %.3f ms\n", label, ok ? "PASS" : "FAIL", elapsed_ms);
 
     free(ref);
-    tensor_free(a);
-    tensor_free(b);
-    tensor_free(c);
+    arena_destroy(arena);
 }
 
 void test_mul(u32 m, u32 k, u32 n) {
     printf("test_mul [%u x %u] * [%u x %u]\n", m, k, k, n);
-    run_mul_variant("A*B",  m, k, n, false, false);
-    run_mul_variant("At*B", m, k, n, true,  false);
-    run_mul_variant("A*Bt", m, k, n, false, true);
+    run_mul_variant("A*B",  m, k, n, false, false, arena_create(GiB(1), MiB(1), 8));
+    run_mul_variant("At*B", m, k, n, true,  false, arena_create(GiB(1), MiB(1), 8));
+    run_mul_variant("A*Bt", m, k, n, false, true,  arena_create(GiB(1), MiB(1), 8));
 }
 
 void test_reduce_add(u32 rows, u32 cols, u32 dim) {
     printf("test_reduce_add [%u x %u] dim=%u\n", rows, cols, dim);
 
+    arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
+
     u32 shape[] = {1, 1, rows, cols};
-    Tensor* t = tensor_create(shape, 4);
+    Tensor* t = tensor_create(shape, 4, arena);
     tensor_randomize(t, 0.0f, 10.0f);
 
     double start = perf_counter_ns();
-    Tensor* red = tensor_reduce_add(t, dim);
+    Tensor* red = tensor_reduce_add(t, dim, arena);
     double elapsed_ms = (perf_counter_ns() - start) / 1e6;
 
     u32 outer = (dim == 2) ? cols : rows;
@@ -130,8 +131,7 @@ void test_reduce_add(u32 rows, u32 cols, u32 dim) {
 
     printf("  %s  %.3f ms\n", ok ? "PASS" : "FAIL", elapsed_ms);
 
-    tensor_free(t);
-    tensor_free(red);
+    arena_destroy(arena);
 }
 
 void test_arena(usize reserve, usize commit, usize alloc_size, u32 n_allocs) {
@@ -169,6 +169,13 @@ void test_arena(usize reserve, usize commit, usize alloc_size, u32 n_allocs) {
 void test_grad_relu(void) {
     printf("test_grad_relu [2 x 2]\n");
 
+    arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
+    if (!arena) {
+        printf("  FAIL: arena_create returned NULL\n");
+        return;
+    }
+    gradt_set_arena(arena);
+
     u32 shape[] = {1, 1, 2, 2};
     GradTensor* gt = gradt_create(shape, 4);
     gt->tens->data[0] =  1.0f;
@@ -189,6 +196,5 @@ void test_grad_relu(void) {
 
     printf("  %s\n", ok ? "PASS" : "FAIL");
 
-    gradt_free(gt);
-    free(rgt);
+    gradt_destroy_arena();
 }

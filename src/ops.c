@@ -40,11 +40,11 @@ void op_set_nop(Op* op) {
 }
 
 static void relu_fwd(const GradTensor* src, GradTensor* dst) {
-    _relu_tensor_kernel(src->tens, dst->tens);
+    _tensor_kernel_relu(src->tens, dst->tens);
 }
 
 static void relu_bwd(GradTensor* src, const GradTensor* dst) {
-    _relu_bwd_tensor_kernel(src->tens, src->grad, dst->grad);
+    _tensor_kernel_relu_bwd(src->tens, src->grad, dst->grad);
 }
 
 void op_set_relu(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst) {
@@ -56,11 +56,11 @@ void op_set_relu(Op* op, struct GradTensor_struct* src, struct GradTensor_struct
 }
 
 static void add_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* dst) {
-    _add_tensor_kernel(src1->tens, src2->tens, dst->tens);
+    _tensor_kernel_add(src1->tens, src2->tens, dst->tens);
 }
 
 static void add_bwd(GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
-    _add_tensor_bwd_kernel(src1->grad, src2->grad, dst->grad);
+    _tensor_kernel_add_bwd(src1->grad, src2->grad, dst->grad);
 }
 
 void op_set_add(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {
@@ -73,12 +73,12 @@ void op_set_add(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct
 }
 
 static void mul_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* dst) {
-    _mul_tensor_kernel(src1->tens, src2->tens, dst->tens);
+    _tensor_kernel_mul(src1->tens, src2->tens, dst->tens);
 }
 
 static void mul_bwd(GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
-    _mul_tensor_bt_kernel(dst->grad, src2->tens, src1->grad);
-    _mul_tensor_at_kernel(src1->tens, dst->grad, src1->grad);
+    _tensor_kernel_mul_bt(dst->grad, src2->tens, src1->grad);
+    _tensor_kernel_mul_at(src1->tens, dst->grad, src1->grad);
 }
 
 void op_set_mul(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {

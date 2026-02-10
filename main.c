@@ -7,26 +7,26 @@
 
 void add_test() {
     u32 a_shape[] = {1, 1, 1024, 1024};
-    Tensor* a = create_tensor(a_shape, 4);
-    randomize_tensor(a, 0.0, 1.0);
+    Tensor* a = tensor_create(a_shape, 4);
+    tensor_randomize(a, 0.0, 1.0);
 
     u32 b_shape[] = {1, 1, 1024, 1024};
-    Tensor* b = create_tensor(b_shape, 4);
-    randomize_tensor(b, 0.0, 1.0);
+    Tensor* b = tensor_create(b_shape, 4);
+    tensor_randomize(b, 0.0, 1.0);
     
-    print_tensor(a, false);
-    print_tensor(b, false);
+    tensor_print(a, false);
+    tensor_print(b, false);
 
 
     double start = perf_counter_ns();
-    Tensor* c = add_tensor(a, b);
+    Tensor* c = tensor_add(a, b);
     double elapsed = perf_counter_ns() - start;
     printf("Vectorized took %.3fms\n", elapsed/1000000.0);
 
 
-    free_tensor(a);
-    free_tensor(b);
-    free_tensor(c);
+    tensor_free(a);
+    tensor_free(b);
+    tensor_free(c);
 }
 
 static void matmul(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
@@ -44,18 +44,18 @@ static void matmul(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols,
 void mul_test() {
     u32 size = 512;
     u32 a_shape[] = {1, 1, size, size};
-    Tensor* a = create_tensor(a_shape, 4);
+    Tensor* a = tensor_create(a_shape, 4);
 
     u32 b_shape[] = {1, 1, size, size};
-    Tensor* b = create_tensor(b_shape, 4);
+    Tensor* b = tensor_create(b_shape, 4);
 
-    randomize_tensor(a, 0.0, 1.0);
-    randomize_tensor(b, 0.0, 1.0);
+    tensor_randomize(a, 0.0, 1.0);
+    tensor_randomize(b, 0.0, 1.0);
 
     double start = perf_counter_ns();
-    Tensor* c = mul_tensor_tr(a, b, false, false);
+    Tensor* c = tensor_mul_tr(a, b, false, false);
     double elapsed = perf_counter_ns() - start;
-    print_tensor(c, false);
+    tensor_print(c, false);
     printf("Vec Multiplication took %.3fms\n", elapsed/1000000.0);
 
     f32* res = malloc(size * size * sizeof(f32));
@@ -69,9 +69,9 @@ void mul_test() {
     }
 
     free(res);
-    free_tensor(a);
-    free_tensor(b);
-    free_tensor(c);
+    tensor_free(a);
+    tensor_free(b);
+    tensor_free(c);
 }
 
 static void matmul_at(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
@@ -113,18 +113,18 @@ static void matmul_atbt(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_
 void mul_bt_test() {
     u32 size = 512;
     u32 a_shape[] = {1, 1, size, size/2};
-    Tensor* a = create_tensor(a_shape, 4);
+    Tensor* a = tensor_create(a_shape, 4);
 
     u32 b_shape[] = {1, 1, size, size/2};
-    Tensor* b = create_tensor(b_shape, 4);
+    Tensor* b = tensor_create(b_shape, 4);
 
-    randomize_tensor(a, 0.0, 1.0);
-    randomize_tensor(b, 0.0, 1.0);
+    tensor_randomize(a, 0.0, 1.0);
+    tensor_randomize(b, 0.0, 1.0);
 
     double start = perf_counter_ns();
-    Tensor* c = mul_tensor_tr(a, b, false, true);
+    Tensor* c = tensor_mul_tr(a, b, false, true);
     double elapsed = perf_counter_ns() - start;
-    print_tensor(c, false);
+    tensor_print(c, false);
     printf("Vec Multiplication Bt took %.3fms\n", elapsed/1000000.0);
     
     f32* res = malloc(size * size * sizeof(f32));
@@ -139,26 +139,26 @@ void mul_bt_test() {
     }
 
     free(res);
-    free_tensor(a);
-    free_tensor(b);
-    free_tensor(c);
+    tensor_free(a);
+    tensor_free(b);
+    tensor_free(c);
 }
 
 void mul_at_test() {
     u32 size = 512;
     u32 a_shape[] = {1, 1, size/2, size};
-    Tensor* a = create_tensor(a_shape, 4);
+    Tensor* a = tensor_create(a_shape, 4);
 
     u32 b_shape[] = {1, 1, size/2, size};
-    Tensor* b = create_tensor(b_shape, 4);
+    Tensor* b = tensor_create(b_shape, 4);
 
-    randomize_tensor(a, 0.0, 1.0);
-    randomize_tensor(b, 0.0, 1.0);
+    tensor_randomize(a, 0.0, 1.0);
+    tensor_randomize(b, 0.0, 1.0);
 
     double start = perf_counter_ns();
-    Tensor* c = mul_tensor_tr(a, b, true, false);
+    Tensor* c = tensor_mul_tr(a, b, true, false);
     double elapsed = perf_counter_ns() - start;
-    print_tensor(c, false);
+    tensor_print(c, false);
     printf("Vec Multiplication At took %.3fms\n", elapsed/1000000.0);
     
     f32* res = malloc(size * size * sizeof(f32));
@@ -173,19 +173,19 @@ void mul_at_test() {
     }
 
     free(res);
-    free_tensor(a);
-    free_tensor(b);
-    free_tensor(c);
+    tensor_free(a);
+    tensor_free(b);
+    tensor_free(c);
 }
 
 void arena_test() {
-    arena_allocator* arena = create_arena(GiB(4), MiB(1), 8);
+    arena_allocator* arena = arena_create(GiB(4), MiB(1), 8);
 
     usize size = KiB(500);
     for (int i = 0; i < 100; i++) {
         // getchar();
         printf("Allocating %lu bytes\n", size);
-        u8* mem = alloc_arena(arena, size, 1); 
+        u8* mem = arena_alloc(arena, size, 1); 
         if (mem == NULL) {
             printf("Failed to alloc\n");
         }
@@ -194,33 +194,33 @@ void arena_test() {
 
     printf("Allocated %x bytes\n", arena->alloc_pos);
     
-    free_arena(arena);
-    if (!destroy_arena(arena)) {
+    arena_free(arena);
+    if (!arena_destroy(arena)) {
         printf("Failed to destroy arena\n");
     }
 }
 
 void grad_test() {
     u32 shape[4] = {1, 1, 2, 2};
-    GradTensor* gt = create_gradt(shape, 4);
+    GradTensor* gt = gradt_create(shape, 4);
     gt->tens->data[0] = 1.0;
     gt->tens->data[1] = 0.1;
     gt->tens->data[2] = -1;
     gt->tens->data[3] = 3.0;
 
-    GradTensor* rgt = relu(gt);
+    GradTensor* rgt = gradt_relu(gt);
 
-    print_tensor(gt->tens, true);
-    print_tensor(rgt->tens, true);
+    tensor_print(gt->tens, true);
+    tensor_print(rgt->tens, true);
     
-    free_gradt(gt);
+    gradt_free(gt);
     free(rgt);
 }
 
 void red_add_test() {
     u32 dim = 128;
     u32 shape[4] = {1, 1, dim, dim};
-    Tensor* t = create_tensor(shape, 4);
+    Tensor* t = tensor_create(shape, 4);
     for (u32 i = 0; i < dim; i++) {
         for (u32 j = 0; j < dim; j++) {
             t->data[i * shape[3] + j] = j;
@@ -228,10 +228,10 @@ void red_add_test() {
     }
 
     double start = perf_counter_ns();
-    Tensor* red = reduce_add_tensor(t, 2);
+    Tensor* red = tensor_reduce_add(t, 2);
     double elapsed = perf_counter_ns() - start;
-    print_tensor(t, false);
-    print_tensor(red, false);
+    tensor_print(t, false);
+    tensor_print(red, false);
     printf("Reduction took %.3fms\n", elapsed/1000000.0);
 
     bool err = false;
@@ -250,8 +250,8 @@ void red_add_test() {
         printf("Reduction correct\n");
     }
     
-    free_tensor(t);
-    free_tensor(red);
+    tensor_free(t);
+    tensor_free(red);
 }
 
 int main() {

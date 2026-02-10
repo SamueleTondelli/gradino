@@ -11,12 +11,13 @@ typedef struct GradTensor_struct {
     Op op;  // op which generates this tensor (dst = this)
 } GradTensor;
 
-GradTensor* create_gradt(u32* shape, usize shape_len);
-GradTensor* create_gradt_from_tens(Tensor* tens);
-void free_gradt(GradTensor* gt);
+GradTensor* gradt_create(u32* shape, usize shape_len);
+GradTensor* gradt_create_from_tens(Tensor* tens);
+void gradt_free(GradTensor* gt);
 
-GradTensor* relu(GradTensor* gt);
-GradTensor* add(GradTensor* gt1, GradTensor* gt2);
-void backward(GradTensor* gt);
+GradTensor* gradt_relu(GradTensor* gt);
+GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2);
+GradTensor* gradt_mul(GradTensor* gt1, GradTensor* gt2);
+void gradt_backward(GradTensor* gt);
 
 #endif

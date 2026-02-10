@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-Tensor* create_tensor(u32* shape, usize shape_len) {
+Tensor* tensor_create(u32* shape, usize shape_len) {
     if (shape_len > 4) {
         return NULL;
     }
@@ -28,12 +28,12 @@ Tensor* create_tensor(u32* shape, usize shape_len) {
     return t;
 }
 
-void free_tensor(Tensor* t) {
+void tensor_free(Tensor* t) {
     free(t->data);
     free(t);
 }
 
-void print_tensor(const Tensor* t, bool print_data) {
+void tensor_print(const Tensor* t, bool print_data) {
     printf("Shape: [");
     for (int i = 0; i < 4; i++) {
         printf(" %u", t->shape[i]);
@@ -57,20 +57,20 @@ void print_tensor(const Tensor* t, bool print_data) {
     }
 }
 
-void randomize_tensor(Tensor* t, f32 min, f32 max) {
+void tensor_randomize(Tensor* t, f32 min, f32 max) {
     usize data_len = t->data_len;
     for (usize i = 0; i < data_len; i++) {
         t->data[i] = random_f32(min, max);
     }   
 }
 
-void set_tensor(Tensor* t, f32 v) {
+void tensor_set(Tensor* t, f32 v) {
     for (usize i = 0; i < t->data_len; i++) {
         t->data[i] = v;
     }
 }
 
-Tensor* add_tensor(const Tensor* a, const Tensor* b) {
+Tensor* tensor_add(const Tensor* a, const Tensor* b) {
     u32 target_shape[4];
     for (int i = 0; i < 4; i++) {
         if (a->shape[i] == b->shape[i]) {
@@ -84,17 +84,17 @@ Tensor* add_tensor(const Tensor* a, const Tensor* b) {
         }
     }
 
-    Tensor* result = create_tensor(target_shape, 4);
-    _add_tensor_kernel(a, b, result);
+    Tensor* result = tensor_create(target_shape, 4);
+    _tensor_kernel_add(a, b, result);
     return result;
 }
 
-void _add_tensor_bwd_kernel(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad) {
+void _tensor_kernel_add_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad) {
     memcpy(a_grad->data, in_grad->data, a_grad->data_len);
     memcpy(b_grad->data, in_grad->data, b_grad->data_len);
 }
 
-Tensor* mul_tensor(const Tensor* a, const Tensor* b) {
+Tensor* tensor_mul(const Tensor* a, const Tensor* b) {
     u32 target_shape[4];
     for (int i = 0; i < 2; i++) {
         if (a->shape[i] == b->shape[i]) {
@@ -114,12 +114,12 @@ Tensor* mul_tensor(const Tensor* a, const Tensor* b) {
 
     target_shape[2] = a->shape[2];
     target_shape[3] = b->shape[3];
-    Tensor* result = create_tensor(target_shape, 4);
-    _mul_tensor_kernel(a, b, result);
+    Tensor* result = tensor_create(target_shape, 4);
+    _tensor_kernel_mul(a, b, result);
     return result;
 }
 
-Tensor* mul_tensor_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
+Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
     u32 target_shape[4];
     for (int i = 0; i < 2; i++) {
         if (a->shape[i] == b->shape[i]) {
@@ -140,37 +140,37 @@ Tensor* mul_tensor_tr(const Tensor* a, const Tensor* b, bool at, bool bt) {
         }
         target_shape[2] = a->shape[3];
         target_shape[3] = b->shape[3];
-        result = create_tensor(target_shape, 4);
-        _mul_tensor_at_kernel(a, b, result);
+        result = tensor_create(target_shape, 4);
+        _tensor_kernel_mul_at(a, b, result);
     } else if (!at && bt) {
         if (a->shape[3] != b->shape[3]) {
             return NULL;
         } 
         target_shape[2] = a->shape[2];
         target_shape[3] = b->shape[2];
-        result = create_tensor(target_shape, 4);
-        _mul_tensor_bt_kernel(a, b, result);
+        result = tensor_create(target_shape, 4);
+        _tensor_kernel_mul_bt(a, b, result);
     } else if (at && bt) {
         if (a->shape[2] != b->shape[3]) {
             return NULL;
         }
         target_shape[2] = a->shape[3];
         target_shape[3] = b->shape[2];
-        result = create_tensor(target_shape, 4);
-        _mul_tensor_atbt_kernel(a, b, result);
+        result = tensor_create(target_shape, 4);
+        _tensor_kernel_mul_atbt(a, b, result);
     } else {
         if (a->shape[3] != b->shape[2]) {
             return NULL;
         }
         target_shape[2] = a->shape[2];
         target_shape[3] = b->shape[3];
-        result = create_tensor(target_shape, 4);
-        _mul_tensor_kernel(a, b, result);
+        result = tensor_create(target_shape, 4);
+        _tensor_kernel_mul(a, b, result);
     }
     return result;
 }
 
-Tensor* reduce_add_tensor(const Tensor* src, usize dim) {
+Tensor* tensor_reduce_add(const Tensor* src, usize dim) {
     if (dim > 3) {
         return NULL;
     }
@@ -178,7 +178,7 @@ Tensor* reduce_add_tensor(const Tensor* src, usize dim) {
     u32 res_shape[4];
     memcpy(res_shape, src->shape, 4 * sizeof(u32));
     res_shape[dim] = 1;
-    Tensor* res = create_tensor(res_shape, 4);
-    _reduce_add_tensor_kernel(src, res, dim);
+    Tensor* res = tensor_create(res_shape, 4);
+    _tensor_kernel_reduce_add(src, res, dim);
     return res;
 }

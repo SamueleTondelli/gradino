@@ -2,7 +2,7 @@
 
 #include <immintrin.h>
 
-void _add_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     if (a->shape[3] == b->shape[3] && a->shape[3] >= 16) {
         usize total_rows = result->shape[0] * result->shape[1] * result->shape[2];
@@ -122,7 +122,7 @@ static void matmul_tile6x16(const f32* a, const f32* b, f32* res, u32 a_rows, u3
     }
 }
 
-void _mul_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+void _tensor_kernel_mul(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     usize mat_idx = 0, total_mats = result->shape[0] * result->shape[1];
     while (mat_idx < total_mats) {
@@ -146,7 +146,7 @@ void _mul_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
         mat_idx++;
     }
 }
-void _relu_tensor_kernel(const Tensor* src, Tensor* dst) {
+void _tensor_kernel_relu(const Tensor* src, Tensor* dst) {
     for (usize i = 0; i < 4; i++) {
         if (src->shape[i] != dst->shape[i]) {
             printf("Bad shape in relu_tensor\n");
@@ -173,7 +173,7 @@ void _relu_tensor_kernel(const Tensor* src, Tensor* dst) {
     }
 }
 
-void _relu_bwd_tensor_kernel(const Tensor* src, Tensor* src_grad, const Tensor* in_grad) {
+void _tensor_kernel_relu_bwd(const Tensor* src, Tensor* src_grad, const Tensor* in_grad) {
     for (usize i = 0; i < 4; i++) {
         if (src->shape[i] != src_grad->shape[i] || src_grad->shape[i] != in_grad->shape[i] || src->shape[i] != in_grad->shape[i]) {
             printf("Bad shape in relu_bwd_tensor\n");
@@ -247,7 +247,7 @@ static void matmul_at(const f32* a, const f32* b, f32* res, u32 at_rows, u32 at_
     }
 }
 
-void _mul_tensor_at_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+void _tensor_kernel_mul_at(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     usize mat_idx = 0, total_mats = result->shape[0] * result->shape[1];
     while (mat_idx < total_mats) {
@@ -298,7 +298,7 @@ static void matmul_bt(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_co
     }
 }
 
-void _mul_tensor_bt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+void _tensor_kernel_mul_bt(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     usize mat_idx = 0, total_mats = result->shape[0] * result->shape[1];
     while (mat_idx < total_mats) {
@@ -323,11 +323,11 @@ void _mul_tensor_bt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
     }
 }
 
-void _mul_tensor_atbt_kernel(const Tensor* a, const Tensor* b, Tensor* result) {
+void _tensor_kernel_mul_atbt(const Tensor* a, const Tensor* b, Tensor* result) {
     UNIMPL();
 }
 
-void _reduce_add_tensor_kernel(const Tensor* src, Tensor* result, usize red_dim) {
+void _tensor_kernel_reduce_add(const Tensor* src, Tensor* result, usize red_dim) {
     usize dims_common[3];
     usize dims_map[3];
     usize dims_idx = 0;

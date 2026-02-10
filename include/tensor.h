@@ -12,26 +12,26 @@ typedef struct {
     f32* data;
 } Tensor;
 
-Tensor* create_tensor(u32* shape, usize shape_len);
-void free_tensor(Tensor* t);
+Tensor* tensor_create(u32* shape, usize shape_len);
+void tensor_free(Tensor* t);
 
-void print_tensor(const Tensor* t, bool print_data);
-void randomize_tensor(Tensor* t, f32 min, f32 max);
-void set_tensor(Tensor* t, f32 v);
+void tensor_print(const Tensor* t, bool print_data);
+void tensor_randomize(Tensor* t, f32 min, f32 max);
+void tensor_set(Tensor* t, f32 v);
 
-Tensor* add_tensor(const Tensor* a, const Tensor* b);
-Tensor* mul_tensor(const Tensor* a, const Tensor* b);
-Tensor* mul_tensor_tr(const Tensor* a, const Tensor* b, bool at, bool bt);
-Tensor* reduce_add_tensor(const Tensor* src, usize dim);
+Tensor* tensor_add(const Tensor* a, const Tensor* b);
+Tensor* tensor_mul(const Tensor* a, const Tensor* b);
+Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt);
+Tensor* tensor_reduce_add(const Tensor* src, usize dim);
 
-void _add_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result);
-void _add_tensor_bwd_kernel(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad);
-void _mul_tensor_at_kernel(const Tensor* a, const Tensor* b, Tensor* result);
-void _mul_tensor_bt_kernel(const Tensor* a, const Tensor* b, Tensor* result);
-void _mul_tensor_atbt_kernel(const Tensor* a, const Tensor* b, Tensor* result);
-void _mul_tensor_kernel(const Tensor* a, const Tensor* b, Tensor* result);
-void _reduce_add_tensor_kernel(const Tensor* src, Tensor* result, usize red_dim);
-void _relu_tensor_kernel(const Tensor* src, Tensor* dst);
-void _relu_bwd_tensor_kernel(const Tensor* src, Tensor* src_grad, const Tensor* in_grad);
+void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result);
+void _tensor_kernel_add_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad);
+void _tensor_kernel_mul_at(const Tensor* a, const Tensor* b, Tensor* result);
+void _tensor_kernel_mul_bt(const Tensor* a, const Tensor* b, Tensor* result);
+void _tensor_kernel_mul_atbt(const Tensor* a, const Tensor* b, Tensor* result);
+void _tensor_kernel_mul(const Tensor* a, const Tensor* b, Tensor* result);
+void _tensor_kernel_reduce_add(const Tensor* src, Tensor* result, usize red_dim);
+void _tensor_kernel_relu(const Tensor* src, Tensor* dst);
+void _tensor_kernel_relu_bwd(const Tensor* src, Tensor* src_grad, const Tensor* in_grad);
 
 #endif

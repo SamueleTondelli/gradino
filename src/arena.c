@@ -27,7 +27,7 @@ static u32 get_page_size() {
     return (u32)sysconf(_SC_PAGESIZE);
 }
 
-arena_allocator* create_arena(usize reserve_size, usize commit_size, usize alignment) {
+arena_allocator* arena_create(usize reserve_size, usize commit_size, usize alignment) {
     u32 page_size = get_page_size();
 
     usize reserve_aligned = ALIGN_UP_POW2(reserve_size, page_size);
@@ -50,11 +50,11 @@ arena_allocator* create_arena(usize reserve_size, usize commit_size, usize align
     return ret;
 }
 
-bool destroy_arena(arena_allocator* arena) {
+bool arena_destroy(arena_allocator* arena) {
     return release_mem(arena, arena->reserve_size);
 }
 
-void* alloc_arena(arena_allocator* arena, usize el_size, usize n_el) {
+void* arena_alloc(arena_allocator* arena, usize el_size, usize n_el) {
     usize size = ALIGN_UP_POW2(el_size * n_el, arena->alignment);
 
     if (arena->alloc_pos + size > arena->reserve_size) {
@@ -76,17 +76,17 @@ void* alloc_arena(arena_allocator* arena, usize el_size, usize n_el) {
     return mem;
 }
 
-void free_arena(arena_allocator* arena) {
+void arena_free(arena_allocator* arena) {
     arena->alloc_pos = ALIGN_UP_POW2(sizeof(arena_allocator), arena->alignment);    
 }
 
-void free_size_arena(arena_allocator* arena, usize size) {
+void arena_free_size(arena_allocator* arena, usize size) {
     usize base_pos = ALIGN_UP_POW2(sizeof(arena_allocator), arena->alignment);
     usize new_pos = size < arena->alloc_pos - base_pos ? arena->alloc_pos - size : base_pos;
     arena->alloc_pos =new_pos;
 }
 
-void free_to_arena(arena_allocator* arena, usize new_pos) {    
+void arena_free_to(arena_allocator* arena, usize new_pos) {    
     usize base_pos = ALIGN_UP_POW2(sizeof(arena_allocator), arena->alignment);
     arena->alloc_pos = new_pos > base_pos ? new_pos : base_pos;
 }

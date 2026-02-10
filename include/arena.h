@@ -13,13 +13,13 @@ typedef struct {
     usize alignment;
 } arena_allocator;
 
-arena_allocator* create_arena(usize reserve_size, usize commit_size, usize alignment);
-bool destroy_arena(arena_allocator* arena);
+arena_allocator* arena_create(usize reserve_size, usize commit_size, usize alignment);
+bool arena_destroy(arena_allocator* arena);
 
-void* alloc_arena(arena_allocator* arena, usize el_size, usize n_el);
-void free_arena(arena_allocator* arena);
-void free_size_arena(arena_allocator* arena, usize size);
-void free_to_arena(arena_allocator* arena, usize new_pos);
+void* arena_alloc(arena_allocator* arena, usize el_size, usize n_el);
+void arena_free(arena_allocator* arena);
+void arena_free_size(arena_allocator* arena, usize size);
+void arena_free_to(arena_allocator* arena, usize new_pos);
 
 
 #endif

@@ -83,11 +83,6 @@ Tensor* tensor_add(const Tensor* a, const Tensor* b, arena_allocator* arena) {
     return result;
 }
 
-void _tensor_kernel_add_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_grad) {
-    memcpy(a_grad->data, in_grad->data, a_grad->data_len);
-    memcpy(b_grad->data, in_grad->data, b_grad->data_len);
-}
-
 Tensor* tensor_mul(const Tensor* a, const Tensor* b, arena_allocator* arena) {
     u32 target_shape[4];
     for (int i = 0; i < 2; i++) {
@@ -175,4 +170,23 @@ Tensor* tensor_reduce_add(const Tensor* src, usize dim, arena_allocator* arena) 
     Tensor* res = tensor_create(res_shape, 4, arena);
     _tensor_kernel_reduce_add(src, res, dim);
     return res;
+}
+
+Tensor* tensor_cross_entropy(const Tensor* src, const Tensor* truth, arena_allocator* arena) {
+    if (src->shape[3] != truth->shape[3]) {
+        return NULL;
+    }
+
+    if (truth->shape[0] != 1 || truth->shape[1] != 1) {
+        return NULL;
+    }
+
+    if (src->shape[0] != 1 || src->shape[1] != 1) { // src->shape[2] can be != 1 for batches
+        return NULL;
+    }
+    
+    u32 shape[4] = {1, 1, 1, 1};
+    Tensor* t = tensor_create(shape, 4, arena);
+    _tensor_kernel_cross_entropy(src, truth, t);
+    return t;
 }

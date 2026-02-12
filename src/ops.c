@@ -60,7 +60,7 @@ static void add_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* 
 }
 
 static void add_bwd(GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
-    _tensor_kernel_add_bwd(src1->grad, src2->grad, dst->grad);
+    _tensor_kernel_add_bwd(src1->grad, src2->grad, dst->grad, _gradt_get_arena());
 }
 
 void op_set_add(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {
@@ -77,8 +77,7 @@ static void mul_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* 
 }
 
 static void mul_bwd(GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
-    _tensor_kernel_mul_bt(dst->grad, src2->tens, src1->grad);
-    _tensor_kernel_mul_at(src1->tens, dst->grad, src1->grad);
+    _tensor_kernel_mul_bwd(src1->tens, src1->grad, src2->tens, src2->grad, dst->grad, _gradt_get_arena());
 }
 
 void op_set_mul(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {
@@ -88,4 +87,21 @@ void op_set_mul(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct
     op->op.bin.dst = dst;
     op->op.bin.fwd = mul_fwd;
     op->op.bin.bwd = mul_bwd;
+}
+
+static void cse_fwd(const GradTensor* src, const GradTensor* truth, GradTensor* dst) {
+    _tensor_kernel_cross_entropy(src->tens, truth->tens, dst->tens);
+}
+
+static void cse_bwd(GradTensor* src, GradTensor* truth, const GradTensor* dst) {
+    _tensor_kernel_cross_entropy_bwd(src->tens, truth->tens, src->grad);
+}
+
+void op_set_cse(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* truth, struct GradTensor_struct* dst) {
+    op->type = Binary;
+    op->op.bin.src1 = src;
+    op->op.bin.src2 = truth;
+    op->op.bin.dst = dst;
+    op->op.bin.fwd = cse_fwd;
+    op->op.bin.bwd = cse_bwd;
 }

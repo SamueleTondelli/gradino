@@ -166,7 +166,7 @@ void test_arena(usize reserve, usize commit, usize alloc_size, u32 n_allocs) {
     printf("  %s\n", ok ? "PASS" : "FAIL");
 }
 
-void test_grad_relu(void) {
+void test_grad_relu() {
     printf("test_grad_relu [2 x 2]\n");
 
     arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
@@ -196,5 +196,48 @@ void test_grad_relu(void) {
 
     printf("  %s\n", ok ? "PASS" : "FAIL");
 
+    gradt_destroy_arena();
+}
+
+void test_grad_bwd() {
+    printf("test_grad_bwd\n");
+
+    arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
+    if (!arena) {
+        printf("  FAIL: arena_create returned NULL\n");
+        return;
+    }
+
+    gradt_set_arena(arena);
+
+    u32 in_shape[4] = {1, 1, 4, 8};
+    printf("Creating input batch\n");
+    GradTensor* in = gradt_create(in_shape, 4);
+
+    printf("Creating W matrix\n");
+    u32 w_shape[4] = {1, 1, 8, 16};
+    GradTensor* w = gradt_create(w_shape, 4);
+
+    printf("Creating bias vector\n");
+    u32 b_shape[4] = {1, 1, 1, 16};
+    GradTensor* b = gradt_create(b_shape, 4);
+
+    printf("in @ W\n");
+    GradTensor* proj = gradt_mul(in, w);
+    printf("proj + b\n");
+    GradTensor* preact = gradt_add(proj, b);
+    printf("relu(preact)\n");
+    GradTensor* act = gradt_relu(preact);
+
+    u32 true_labels[4] = {1, 4, 0, 12};    
+    printf("Creating label tensor\n");
+    GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4);
+
+    printf("Computing loss\n");
+    GradTensor* loss = gradt_cross_entropy_loss(act, labels);
+    printf("Backward pass\n");
+    gradt_backward(loss);
+
+    printf("Destroying gradt arena\n");
     gradt_destroy_arena();
 }

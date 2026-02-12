@@ -9,4 +9,5 @@ int main() {
     test_reduce_add(128, 128, 2);
     test_arena(GiB(4), MiB(1), KiB(500), 100);
     test_grad_relu();
+    test_grad_bwd();
 }

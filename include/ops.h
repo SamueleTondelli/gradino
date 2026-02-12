@@ -43,5 +43,6 @@ void op_set_nop(Op* op);
 void op_set_relu(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst);
 void op_set_add(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst);
 void op_set_mul(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst);
+void op_set_cse(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* truth, struct GradTensor_struct* dst);
 
 #endif

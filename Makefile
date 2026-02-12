@@ -16,7 +16,7 @@ run: $(TARGET)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)

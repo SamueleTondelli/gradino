@@ -220,18 +220,17 @@ void test_grad_bwd() {
     u32 true_labels[4] = {1, 4, 0, 12};    
     printf("    Creating label tensor\n");
     GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4, false);
-
     printf("    Creating linear layer\n");
     LinearLayer lin = nn_linear_create(8, 16);
-    printf("    linear forward\n");
-    GradTensor* preact = nn_linear_forward(&lin, in);
-    printf("    relu(preact)\n");
-    GradTensor* act = gradt_relu(preact);
-    printf("    Computing loss\n");
-    GradTensor* loss = gradt_cross_entropy_loss(act, labels);
+    for (i32 i = 0; i < 5; i++) {
+        printf("        Epoch %d, ", i);
+        GradTensor* preact = nn_linear_forward(&lin, in);
+        GradTensor* act = nn_relu(preact);
+        GradTensor* loss = nn_cross_enropy_loss(act, labels);
+        printf("Loss: %f\n", loss->tens->data[0]);
 
-    printf("    Backward pass\n");
-    gradt_backward(loss, optim_sgd_momentum, &sgd_momentum_config);
+        gradt_backward(loss, optim_sgd_momentum, &sgd_momentum_config);
+    }
 
     printf("    Destroying gradt arena\n");
     gradt_destroy_arena();

@@ -139,7 +139,7 @@ void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
     DynArray topo = create_dynarr(10);
     DynArray visited = create_dynarr(10);
     topo_sort(gt, &topo, &visited);
-    printf("Computing bwd pass of %lu tensors\n", topo.len);
+    // printf("Computing bwd pass of %lu tensors\n", topo.len);
     for (usize i = 0; i < topo.len - 1; i++) {
         GradTensor* gti = (GradTensor*)topo.ptr[i];
         if (gti->grad == NULL || gti->prev_grad == NULL) {

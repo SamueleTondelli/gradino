@@ -211,11 +211,11 @@ void test_grad_bwd() {
 
     gradt_set_arena(arena);
 
-    SGDConfig sgd_config = optim_sgd_get_config(1e-3);
+    SGDMomentumConfig sgd_momentum_config = optim_sgd_momentum_get_config(1e-3, 0.9);
         
     u32 in_shape[4] = {1, 1, 4, 8};
     printf("Creating input batch\n");
-    GradTensor* in = gradt_create(in_shape, 4);
+    GradTensor* in = gradt_create_nograd(in_shape, 4);
 
     printf("Creating W matrix\n");
     u32 w_shape[4] = {1, 1, 8, 16};
@@ -234,12 +234,12 @@ void test_grad_bwd() {
 
     u32 true_labels[4] = {1, 4, 0, 12};    
     printf("Creating label tensor\n");
-    GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4);
+    GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4, false);
 
     printf("Computing loss\n");
     GradTensor* loss = gradt_cross_entropy_loss(act, labels);
     printf("Backward pass\n");
-    gradt_backward(loss, optim_sgd, &sgd_config);
+    gradt_backward(loss, optim_sgd_momentum, &sgd_momentum_config);
 
     printf("Destroying gradt arena\n");
     gradt_destroy_arena();

@@ -35,6 +35,10 @@ GradTensor* gradt_create(u32* shape, usize shape_len) {
     GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
     gt->tens = tensor_create(shape, shape_len, gradt_arena);
     gt->grad = tensor_create(shape, shape_len, gradt_arena);
+    gt->prev_grad = tensor_create(shape, shape_len, gradt_arena);
+    tensor_set(gt->grad, 0.0);
+    tensor_set(gt->prev_grad, 0.0);
+    gt->optimize = true;
     op_set_nop(&gt->op);
     return gt;
 }
@@ -43,11 +47,15 @@ GradTensor* gradt_create_from_tens(Tensor* tens) {
     GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
     gt->tens = tens;
     gt->grad = tensor_create(tens->shape, 4, gradt_arena);
+    gt->prev_grad = tensor_create(tens->shape, 4, gradt_arena);
+    gt->optimize = true;
+    tensor_set(gt->grad, 0.0);
+    tensor_set(gt->prev_grad, 0.0);
     op_set_nop(&gt->op);
     return gt;
 }
 
-GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels) {
+GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels, bool optimize) {
     u32 shape[4] = {1, 1, n_labels, n_classes};
     Tensor* t = tensor_create(shape, 4, gradt_arena);
     for (usize l = 0; l < n_labels; l++) {
@@ -61,7 +69,23 @@ GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels) {
             }
         }
     }
-    return gradt_create_from_tens(t);
+    GradTensor* gt = gradt_create_from_tens(t);
+    gt->optimize = optimize;
+    return gt;
+}
+
+GradTensor* gradt_create_nograd(u32* shape, usize shape_len) {
+    if (shape_len > 4) {
+        return NULL;
+    }
+
+    GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
+    gt->tens = tensor_create(shape, shape_len, gradt_arena);
+    gt->grad = NULL;
+    gt->prev_grad = NULL;
+    gt->optimize = false;
+    op_set_nop(&gt->op);
+    return gt;
 }
 
 GradTensor* gradt_relu(GradTensor* gt) {
@@ -118,6 +142,12 @@ void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
     printf("Computing bwd pass of %lu tensors\n", topo.len);
     for (usize i = 0; i < topo.len - 1; i++) {
         GradTensor* gti = (GradTensor*)topo.ptr[i];
+        if (gti->grad == NULL || gti->prev_grad == NULL) {
+            continue;
+        }
+        Tensor* temp = gti->grad;
+        gti->grad = gti->prev_grad;
+        gti->prev_grad = temp;
         tensor_set(gti->grad, 0.0); 
     }
     
@@ -128,7 +158,9 @@ void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
 
     for (usize i = 0; i < topo.len; i++) {
         GradTensor* gti = (GradTensor*)topo.ptr[topo.len - i - 1];
-        optim(gti, optim_config);
+        if (gti->optimize) {
+            optim(gti, optim_config);
+        }
     }
     
     free_dynarr(&topo);

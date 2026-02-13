@@ -9,7 +9,9 @@
 typedef struct GradTensor_struct {
     Tensor* tens;
     Tensor* grad;
+    Tensor* prev_grad;
     Op op;  // op which generates this tensor (dst = this)
+    bool optimize;
 } GradTensor;
 
 typedef void(*Optimizer)(GradTensor* gt, void* optim_config);
@@ -22,7 +24,8 @@ arena_allocator* _gradt_get_arena();
 
 GradTensor* gradt_create(u32* shape, usize shape_len);
 GradTensor* gradt_create_from_tens(Tensor* tens);
-GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels);
+GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels, bool optimize);
+GradTensor* gradt_create_nograd(u32* shape, usize shape_len);
 
 GradTensor* gradt_relu(GradTensor* gt);
 GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2);

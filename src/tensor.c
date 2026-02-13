@@ -202,3 +202,15 @@ Tensor* tensor_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_all
     _tensor_kernel_sub_scaled(a, b, alpha, result);
     return result;
 }
+
+Tensor* tensor_add_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_allocator* arena) {
+    for (usize i = 0; i <  4; i++) {
+        if (a->shape[i] != b->shape[i]) {
+            return NULL;
+        }
+    }
+
+    Tensor* result = tensor_create(a->shape, 4, arena);
+    _tensor_kernel_add_scaled(a, b, alpha, result);
+    return result;
+}

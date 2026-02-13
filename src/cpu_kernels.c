@@ -82,15 +82,20 @@ void _tensor_kernel_add_bwd(Tensor* a_grad, Tensor* b_grad, const Tensor* in_gra
     Tensor* b_red = in_grad;
 
     for (usize i = 0; i < 4; i++) {
-        if (a_grad->shape[i] < b_grad->shape[i]) {
+        if (a_grad != NULL && a_grad->shape[i] < in_grad->shape[i]) {
             a_red = tensor_reduce_add(a_red, i, arena);
-        } else if (b_grad->shape[i] < a_grad->shape[i]) {
+        } else if (b_grad != NULL && b_grad->shape[i] < in_grad->shape[i]) {
             b_red = tensor_reduce_add(b_red, i, arena);
         }
      }
     
-    memcpy(a_grad->data, a_red->data, a_grad->data_len * sizeof(f32));
-    memcpy(b_grad->data, b_red->data, b_grad->data_len * sizeof(f32));
+    if (a_grad != NULL) {
+        memcpy(a_grad->data, a_red->data, a_grad->data_len * sizeof(f32));
+    }
+
+    if (b_grad != NULL) {
+        memcpy(b_grad->data, b_red->data, b_grad->data_len * sizeof(f32));
+    }
 }
 
 static inline void mmul_6x16(const f32* a, const f32* b, f32* res, u32 a_cols, u32 b_cols, u32 n, u32 m) {
@@ -195,6 +200,10 @@ void _tensor_kernel_relu(const Tensor* src, Tensor* dst) {
 }
 
 void _tensor_kernel_relu_bwd(const Tensor* src, Tensor* src_grad, const Tensor* in_grad) {
+    if (src_grad == NULL) {
+        return;
+    }
+
     for (usize i = 0; i < 4; i++) {
         if (src->shape[i] != src_grad->shape[i] || src_grad->shape[i] != in_grad->shape[i] || src->shape[i] != in_grad->shape[i]) {
             printf("Bad shape in relu_bwd_tensor\n");
@@ -349,28 +358,32 @@ void _tensor_kernel_mul_atbt(const Tensor* a, const Tensor* b, Tensor* result) {
 }
 
 void _tensor_kernel_mul_bwd(const Tensor* a, Tensor* a_grad, const Tensor* b, Tensor* b_grad, const Tensor* result_grad, arena_allocator* arena) {
-    if (result_grad->shape[0] == a_grad->shape[0] && result_grad->shape[1] == a_grad->shape[1]) {
-        _tensor_kernel_mul_bt(result_grad, b, a_grad);
-    } else {
-        Tensor* a_grad_broad = tensor_mul_tr(result_grad, b, false, true, arena);
-        for (usize i = 0; i < 2; i++) {
-            if (result_grad->shape[i] != a_grad->shape[i]) {
-                a_grad_broad = tensor_reduce_add(a_grad_broad, i, arena);
+    if (a_grad != NULL) {
+        if (result_grad->shape[0] == a_grad->shape[0] && result_grad->shape[1] == a_grad->shape[1]) {
+            _tensor_kernel_mul_bt(result_grad, b, a_grad);
+        } else {
+            Tensor* a_grad_broad = tensor_mul_tr(result_grad, b, false, true, arena);
+            for (usize i = 0; i < 2; i++) {
+                if (result_grad->shape[i] != a_grad->shape[i]) {
+                    a_grad_broad = tensor_reduce_add(a_grad_broad, i, arena);
+                }
             }
+            memcpy(a_grad->data, a_grad_broad->data, a_grad->data_len * sizeof(f32));
         }
-        memcpy(a_grad->data, a_grad_broad->data, a_grad->data_len * sizeof(f32));
     }
 
-    if (result_grad->shape[0] == b_grad->shape[0] && result_grad->shape[1] == b_grad->shape[1]) {
-        _tensor_kernel_mul_at(a, result_grad, b_grad);
-    } else {
-        Tensor* b_grad_broad = tensor_mul_tr(a, result_grad, true, false, arena);
-        for (usize i = 0; i < 2; i++) {
-            if (result_grad->shape[i] != b_grad->shape[i]) {
-                b_grad_broad = tensor_reduce_add(b_grad, i, arena);
+    if (b_grad != NULL) {
+        if (result_grad->shape[0] == b_grad->shape[0] && result_grad->shape[1] == b_grad->shape[1]) {
+            _tensor_kernel_mul_at(a, result_grad, b_grad);
+        } else {
+            Tensor* b_grad_broad = tensor_mul_tr(a, result_grad, true, false, arena);
+            for (usize i = 0; i < 2; i++) {
+                if (result_grad->shape[i] != b_grad->shape[i]) {
+                    b_grad_broad = tensor_reduce_add(b_grad, i, arena);
+                }
             }
+            memcpy(b_grad->data, b_grad_broad->data, b_grad->data_len * sizeof(f32));
         }
-        memcpy(b_grad->data, b_grad_broad->data, b_grad->data_len * sizeof(f32));
     }
 }
 
@@ -425,6 +438,9 @@ void _tensor_kernel_cross_entropy(const Tensor* src, const Tensor* truth, Tensor
 }
 
 void _tensor_kernel_cross_entropy_bwd(const Tensor* src, const Tensor* truth, Tensor* src_grad) {
+    if (src_grad == NULL) {
+        return;
+    }
     for (usize j = 0; j < src->shape[2]; j++) {
         f32 sftmx_den = 0.0;
         usize base = src->stride[2] * j;
@@ -449,6 +465,24 @@ void _tensor_kernel_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tens
         bv = _mm512_mul_ps(bv, alpha_v);
         __m512 av = _mm512_loadu_ps(&a->data[i]);
         __m512 res_v = _mm512_sub_ps(av, bv);
+        _mm512_storeu_ps(&result->data[i], res_v);
+        i += 16;
+    }
+
+    for (; i < a->data_len; i++) {
+        result->data[i] = a->data[i] - alpha * b->data[i];
+    }
+}
+
+void _tensor_kernel_add_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tensor* result) {
+    __m512 alpha_v = _mm512_set1_ps(alpha);
+    usize i = 0;
+    usize nvecs = a->data_len / 16;
+    for (usize iv = 0; iv < nvecs; iv++) {
+        __m512 bv = _mm512_loadu_ps(&b->data[i]);
+        bv = _mm512_mul_ps(bv, alpha_v);
+        __m512 av = _mm512_loadu_ps(&a->data[i]);
+        __m512 res_v = _mm512_add_ps(av, bv);
         _mm512_storeu_ps(&result->data[i], res_v);
         i += 16;
     }

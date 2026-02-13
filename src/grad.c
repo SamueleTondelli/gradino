@@ -106,7 +106,7 @@ GradTensor* gradt_cross_entropy_loss(GradTensor* src, GradTensor* truth) {
     return loss;
 }
 
-void gradt_backward(GradTensor* gt) {
+void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
     if (gt->tens->data_len != 1) {
         printf("Only scalar tensors allowed in backward, got %lu length\n", gt->tens->data_len);
     }
@@ -115,9 +115,20 @@ void gradt_backward(GradTensor* gt) {
     DynArray topo = create_dynarr(10);
     DynArray visited = create_dynarr(10);
     topo_sort(gt, &topo, &visited);
+    printf("Computing bwd pass of %lu tensors\n", topo.len);
+    for (usize i = 0; i < topo.len - 1; i++) {
+        GradTensor* gti = (GradTensor*)topo.ptr[i];
+        tensor_set(gti->grad, 0.0); 
+    }
+    
     for (usize i = 0; i < topo.len; i++) {
-        GradTensor* gt = (GradTensor*)topo.ptr[topo.len - i - 1];
-        op_bwd(&gt->op);
+        GradTensor* gti = (GradTensor*)topo.ptr[topo.len - i - 1];
+        op_bwd(&gti->op);
+    }
+
+    for (usize i = 0; i < topo.len; i++) {
+        GradTensor* gti = (GradTensor*)topo.ptr[topo.len - i - 1];
+        optim(gti, optim_config);
     }
     
     free_dynarr(&topo);

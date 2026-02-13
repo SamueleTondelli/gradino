@@ -13,7 +13,7 @@ typedef struct {
     f32* data;
 } Tensor;
 
-Tensor* tensor_create(u32* shape, usize shape_len, arena_allocator* arena);
+Tensor* tensor_create(const u32* shape, usize shape_len, arena_allocator* arena);
 
 void tensor_print(const Tensor* t, bool print_data);
 void tensor_randomize(Tensor* t, f32 min, f32 max);
@@ -24,6 +24,8 @@ Tensor* tensor_mul(const Tensor* a, const Tensor* b, arena_allocator* arena);
 Tensor* tensor_mul_tr(const Tensor* a, const Tensor* b, bool at, bool bt, arena_allocator* arena);
 Tensor* tensor_reduce_add(const Tensor* src, usize dim, arena_allocator* arena);
 Tensor* tensor_cross_entropy(const Tensor* src, const Tensor* truth, arena_allocator* arena);
+// result = a - alpha * b, no broadcasting
+Tensor* tensor_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_allocator* arena);
 
 void _tensor_kernel_cross_entropy(const Tensor* src, const Tensor* truth, Tensor* result);
 void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result);
@@ -37,5 +39,6 @@ void _tensor_kernel_reduce_add(const Tensor* src, Tensor* result, usize red_dim)
 void _tensor_kernel_relu(const Tensor* src, Tensor* dst);
 void _tensor_kernel_relu_bwd(const Tensor* src, Tensor* src_grad, const Tensor* in_grad);
 void _tensor_kernel_cross_entropy_bwd(const Tensor* src, const Tensor* truth, Tensor* src_grad);
+void _tensor_kernel_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tensor* result);
 
 #endif

@@ -3,6 +3,7 @@
 #include "../include/tensor.h"
 #include "../include/grad.h"
 #include "../include/utils.h"
+#include "../include/optim.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -210,6 +211,8 @@ void test_grad_bwd() {
 
     gradt_set_arena(arena);
 
+    SGDConfig sgd_config = optim_sgd_get_config(1e-3);
+        
     u32 in_shape[4] = {1, 1, 4, 8};
     printf("Creating input batch\n");
     GradTensor* in = gradt_create(in_shape, 4);
@@ -236,7 +239,7 @@ void test_grad_bwd() {
     printf("Computing loss\n");
     GradTensor* loss = gradt_cross_entropy_loss(act, labels);
     printf("Backward pass\n");
-    gradt_backward(loss);
+    gradt_backward(loss, optim_sgd, &sgd_config);
 
     printf("Destroying gradt arena\n");
     gradt_destroy_arena();

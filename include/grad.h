@@ -12,6 +12,8 @@ typedef struct GradTensor_struct {
     Op op;  // op which generates this tensor (dst = this)
 } GradTensor;
 
+typedef void(*Optimizer)(GradTensor* gt, void* optim_config);
+
 void gradt_set_arena(arena_allocator* arena);
 void gradt_destroy_arena();
 void gradt_detach_arena();
@@ -26,6 +28,6 @@ GradTensor* gradt_relu(GradTensor* gt);
 GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2);
 GradTensor* gradt_mul(GradTensor* gt1, GradTensor* gt2);
 GradTensor* gradt_cross_entropy_loss(GradTensor* src, GradTensor* truth);
-void gradt_backward(GradTensor* gt);
+void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config);
 
 #endif

@@ -440,3 +440,20 @@ void _tensor_kernel_cross_entropy_bwd(const Tensor* src, const Tensor* truth, Te
     }
 }
 
+void _tensor_kernel_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tensor* result) {
+    __m512 alpha_v = _mm512_set1_ps(alpha);
+    usize i = 0;
+    usize nvecs = a->data_len / 16;
+    for (usize iv = 0; iv < nvecs; iv++) {
+        __m512 bv = _mm512_loadu_ps(&b->data[i]);
+        bv = _mm512_mul_ps(bv, alpha_v);
+        __m512 av = _mm512_loadu_ps(&a->data[i]);
+        __m512 res_v = _mm512_sub_ps(av, bv);
+        _mm512_storeu_ps(&result->data[i], res_v);
+        i += 16;
+    }
+
+    for (; i < a->data_len; i++) {
+        result->data[i] = a->data[i] - alpha * b->data[i];
+    }
+}

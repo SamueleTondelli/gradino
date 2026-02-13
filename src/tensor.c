@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-Tensor* tensor_create(u32* shape, usize shape_len, arena_allocator* arena) {
+Tensor* tensor_create(const u32* shape, usize shape_len, arena_allocator* arena) {
     if (shape_len > 4) {
         return NULL;
     }
@@ -189,4 +189,16 @@ Tensor* tensor_cross_entropy(const Tensor* src, const Tensor* truth, arena_alloc
     Tensor* t = tensor_create(shape, 4, arena);
     _tensor_kernel_cross_entropy(src, truth, t);
     return t;
+}
+
+Tensor* tensor_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_allocator* arena) {
+    for (usize i = 0; i <  4; i++) {
+        if (a->shape[i] != b->shape[i]) {
+            return NULL;
+        }
+    }
+
+    Tensor* result = tensor_create(a->shape, 4, arena);
+    _tensor_kernel_sub_scaled(a, b, alpha, result);
+    return result;
 }

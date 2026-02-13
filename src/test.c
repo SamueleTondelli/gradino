@@ -4,6 +4,7 @@
 #include "../include/grad.h"
 #include "../include/utils.h"
 #include "../include/optim.h"
+#include "../include/nn.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -214,33 +215,24 @@ void test_grad_bwd() {
     SGDMomentumConfig sgd_momentum_config = optim_sgd_momentum_get_config(1e-3, 0.9);
         
     u32 in_shape[4] = {1, 1, 4, 8};
-    printf("Creating input batch\n");
+    printf("    Creating input batch\n");
     GradTensor* in = gradt_create_nograd(in_shape, 4);
-
-    printf("Creating W matrix\n");
-    u32 w_shape[4] = {1, 1, 8, 16};
-    GradTensor* w = gradt_create(w_shape, 4);
-
-    printf("Creating bias vector\n");
-    u32 b_shape[4] = {1, 1, 1, 16};
-    GradTensor* b = gradt_create(b_shape, 4);
-
-    printf("in @ W\n");
-    GradTensor* proj = gradt_mul(in, w);
-    printf("proj + b\n");
-    GradTensor* preact = gradt_add(proj, b);
-    printf("relu(preact)\n");
-    GradTensor* act = gradt_relu(preact);
-
     u32 true_labels[4] = {1, 4, 0, 12};    
-    printf("Creating label tensor\n");
+    printf("    Creating label tensor\n");
     GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4, false);
 
-    printf("Computing loss\n");
+    printf("    Creating linear layer\n");
+    LinearLayer lin = nn_linear_create(8, 16);
+    printf("    linear forward\n");
+    GradTensor* preact = nn_linear_forward(&lin, in);
+    printf("    relu(preact)\n");
+    GradTensor* act = gradt_relu(preact);
+    printf("    Computing loss\n");
     GradTensor* loss = gradt_cross_entropy_loss(act, labels);
-    printf("Backward pass\n");
+
+    printf("    Backward pass\n");
     gradt_backward(loss, optim_sgd_momentum, &sgd_momentum_config);
 
-    printf("Destroying gradt arena\n");
+    printf("    Destroying gradt arena\n");
     gradt_destroy_arena();
 }

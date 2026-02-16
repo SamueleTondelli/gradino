@@ -13,7 +13,7 @@ LinearLayer nn_linear_create(u32 in, u32 out) {
 
     f32 variance = 2.0 / ((f32)in + out);
     tensor_randomize_gaussian(l.w->tens, 0.0, 1/(variance));
-    
+    tensor_randomize_gaussian(l.b->tens, 0.0, 1/(variance));
     return l;
 }
 

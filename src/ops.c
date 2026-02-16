@@ -174,3 +174,56 @@ void op_set_mse(Op* op, struct GradTensor_struct* src, struct GradTensor_struct*
     op->op.bin.bwd_src1 = mse_bwd_src;
     op->op.bin.bwd_src2 = mse_bwd_truth;
 }
+
+static void sigmoid_fwd(const GradTensor* src, GradTensor* dst) {
+    _tensor_kernel_sigmoid(src->tens, dst->tens);
+}
+
+static void sigmoid_bwd(GradTensor* src, const GradTensor* dst) {
+    _tensor_kernel_sigmoid_bwd(src->grad, dst->tens, dst->grad);
+}
+
+void op_set_sigmoid(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst) {
+    op->type = Mono;
+    op->op.mono.src = src;
+    op->op.mono.dst = dst;
+    op->op.mono.fwd = sigmoid_fwd;
+    op->op.mono.bwd = sigmoid_bwd;
+}
+
+static void mul_elemwise_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* dst) {
+    _tensor_kernel_mul_elemwise(src1->tens, src2->tens, dst->tens);
+}
+
+static void mul_elemwise_bwd_src1(GradTensor* src1, const GradTensor* src2, const GradTensor* dst) {
+    _tensor_kernel_mul_elemwise(src2->tens, dst->grad, src1->grad);
+}
+
+static void mul_elemwise_bwd_src2(const GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
+    _tensor_kernel_mul_elemwise(src1->tens, dst->grad, src2->grad);
+}
+
+void op_set_mul_elemwise(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {
+    op->type = Binary;
+    op->op.bin.src1 = src1;
+    op->op.bin.src2 = src2;
+    op->op.bin.fwd = mul_elemwise_fwd;
+    op->op.bin.bwd_src1 = mul_elemwise_bwd_src1;
+    op->op.bin.bwd_src2 = mul_elemwise_bwd_src2;
+}
+
+static void tanh_fwd(const GradTensor* src, GradTensor* dst) {
+    _tensor_kernel_tanh(src->tens, dst->tens);
+}
+
+static void tanh_bwd(GradTensor* src, const GradTensor* dst) {
+    _tensor_kernel_tanh_bwd(src->grad, dst->tens, dst->grad);
+}
+
+void op_set_tanh(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst) {
+    op->type = Mono;
+    op->op.mono.src = src;
+    op->op.mono.dst = dst;
+    op->op.mono.fwd = tanh_fwd;
+    op->op.mono.bwd = tanh_bwd;
+}

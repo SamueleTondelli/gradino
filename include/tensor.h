@@ -30,6 +30,10 @@ Tensor* tensor_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_all
 // result = a + alpha * b, no broadcasting
 Tensor* tensor_add_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_allocator* arena);
 Tensor* tensor_mean_squared_error(const Tensor* src, const Tensor* truth, arena_allocator* arena);
+Tensor* tensor_sigmoid(const Tensor* src, arena_allocator* arena);
+// no broadcasting
+Tensor* tensor_mul_elemwise(const Tensor* a, const Tensor* b, arena_allocator* arena);
+Tensor* tensor_tanh(const Tensor* src, arena_allocator* arena);
 
 void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result);
 void _tensor_kernel_add_bwd(Tensor* grad, const Tensor* result_grad, arena_allocator* arena);
@@ -48,5 +52,10 @@ void _tensor_kernel_sub_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tens
 void _tensor_kernel_add_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tensor* result);
 void _tensor_kernel_mean_squared_error(const Tensor* src, const Tensor* truth, Tensor* result);
 void _tensor_kernel_mean_squared_error_bwd(const Tensor* src, const Tensor* truth, Tensor* src_grad);
+void _tensor_kernel_sigmoid(const Tensor* src, Tensor* result);
+void _tensor_kernel_mul_elemwise(const Tensor* a, const Tensor* b, Tensor* result);
+void _tensor_kernel_sigmoid_bwd(Tensor* src_grad, const Tensor* result, const Tensor* result_grad);
+void _tensor_kernel_tanh(const Tensor* src, Tensor* result);
+void _tensor_kernel_tanh_bwd(Tensor* src_grad, const Tensor* result, const Tensor* result_grad);
 
 #endif

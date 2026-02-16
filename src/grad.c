@@ -143,6 +143,27 @@ GradTensor* gradt_mean_squared_error_loss(GradTensor* src, GradTensor* truth) {
     return loss;
 }
 
+GradTensor* gradt_sigmoid(GradTensor* src) {
+    Tensor* t_result = tensor_sigmoid(src->tens, gradt_arena);
+    GradTensor* result = gradt_create_from_tens(t_result); 
+    op_set_sigmoid(&result->op, src, result);
+    return result;
+}
+
+GradTensor* gradt_mul_elemwise(GradTensor* gt1, GradTensor* gt2) {
+    Tensor* t_result = tensor_mul_elemwise(gt1->tens, gt2->tens, gradt_arena);
+    GradTensor* result = gradt_create_from_tens(t_result);
+    op_set_mul_elemwise(&result->op, gt1, gt2, result);
+    return result;
+}
+
+GradTensor* gradt_tanh(GradTensor* src) {
+    Tensor* t_result = tensor_tanh(src->tens, gradt_arena);
+    GradTensor* result = gradt_create_from_tens(t_result); 
+    op_set_tanh(&result->op, src, result);
+    return result;
+}
+
 void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
     if (gt->tens->data_len != 1) {
         printf("Only scalar tensors allowed in backward, got %lu length\n", gt->tens->data_len);

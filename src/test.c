@@ -239,7 +239,6 @@ void test_grad_bwd() {
 
 void test_xor(f32 lr, u32 hidden_size, u32 epochs) {
     printf("test_xor with lr %f, hidden_size %u, for %u epochs\n", lr, hidden_size, epochs);
-
     arena_allocator* permanent_arena = arena_create(GiB(1), MiB(1), 8);
     gradt_set_arena(permanent_arena);
 
@@ -277,8 +276,74 @@ void test_xor(f32 lr, u32 hidden_size, u32 epochs) {
         printf("    Epoch %u, Loss %f\n", i, loss->tens->data[0]);
         gradt_free_arena();
     }
+    GradTensor* x = nn_linear_forward(&hidden, in);
+    x = nn_relu(x);
+    x = nn_linear_forward(&out_layer, x);
+    printf("    0 ^ 0 = %f\n    1 ^ 0 = %f\n    0 ^ 1 = %f\n    1 ^ 1 = %f\n", x->tens->data[0], x->tens->data[1], x->tens->data[2], x->tens->data[3]);
 
     printf("    Destroying gradt arena\n");
+    gradt_destroy_arena();
+    arena_destroy(permanent_arena);
+}
+
+void test_bwd_perf(f32 lr, u32 hidden_size, u32 bs, u32 io_dim, u32 n_batches, u32 epochs) {
+    printf("test_bwd_perf with lr %f, hidden_size %u, batch size %u, io dim %u, %u batches, for %u epochs\n",
+           lr, hidden_size, bs, io_dim, n_batches, epochs);
+    arena_allocator* permanent_arena = arena_create(GiB(1), MiB(1), 8);
+    gradt_set_arena(permanent_arena);
+
+    SGDMomentumConfig optim_conf = optim_sgd_momentum_get_config(lr, 0.9);
+
+    u32 inout_shape[4] = {1, 1, bs, io_dim};
+    GradTensor** inputs = malloc(n_batches * sizeof(GradTensor*));
+    GradTensor** truths = malloc(n_batches * sizeof(GradTensor*));
+    for (u32 b = 0; b < n_batches; b++) {
+        inputs[b] = gradt_create_nograd(inout_shape, 4);
+        tensor_randomize_gaussian(inputs[b]->tens, 0.0, 1.0);
+        truths[b] = gradt_create_nograd(inout_shape, 4);
+        tensor_randomize_gaussian(truths[b]->tens, 0.0, 1.0);
+    }
+
+    LinearLayer l1 = nn_linear_create(io_dim, hidden_size);
+    LinearLayer l2 = nn_linear_create(hidden_size, hidden_size);
+    LinearLayer l3 = nn_linear_create(hidden_size, hidden_size);
+    LinearLayer l4 = nn_linear_create(hidden_size, io_dim);
+
+    arena_allocator* epoch_arena = arena_create(GiB(1), MiB(1), 8);
+    gradt_set_arena(epoch_arena);
+    double total_epoch_ms = 0.0;
+    for (u32 i = 0; i < epochs; i++) {
+        double epoch_fwd_ms = 0.0, epoch_bwd_ms = 0.0, epoch_free_ms = 0.0;
+        u64 epoch_start = perf_counter_ns();
+        for (u32 b = 0; b < n_batches; b++) {
+            u64 batch_start = perf_counter_ns();
+            GradTensor* x = nn_linear_forward(&l1, inputs[b]);
+            x = nn_relu(x);
+            x = nn_linear_forward(&l2, x);
+            x = nn_sigmoid(x);
+            x = nn_linear_forward(&l3, x);
+            x = nn_tanh(x);
+            x = nn_linear_forward(&l4, x);
+            GradTensor* loss = nn_mean_squared_error_loss(x, truths[b]);
+            u64 fwd_end = perf_counter_ns();
+            gradt_backward(loss, optim_sgd_momentum, &optim_conf);
+            u64 bwd_end = perf_counter_ns();
+            arena_free(epoch_arena);
+            u64 free_end = perf_counter_ns();
+
+            epoch_fwd_ms  += (fwd_end - batch_start) / 1e6;
+            epoch_bwd_ms  += (bwd_end - fwd_end) / 1e6;
+            epoch_free_ms += (free_end - bwd_end) / 1e6;
+        }
+        double epoch_ms = (perf_counter_ns() - epoch_start) / 1e6;
+        total_epoch_ms += epoch_ms;
+        printf("    Epoch %u: fwd %.3f ms, bwd %.3f ms, free %.3f ms, total %.3f ms, avg batch %.3f ms\n",
+               i, epoch_fwd_ms, epoch_bwd_ms, epoch_free_ms, epoch_ms, epoch_ms / n_batches);
+    }
+    printf("    Average epoch time: %.3f ms\n", total_epoch_ms / epochs);
+
+    free(inputs);
+    free(truths);
     gradt_destroy_arena();
     arena_destroy(permanent_arena);
 }

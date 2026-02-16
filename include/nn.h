@@ -14,5 +14,7 @@ GradTensor* nn_linear_forward(LinearLayer* layer, GradTensor* in);
 GradTensor* nn_relu(GradTensor* gt);
 GradTensor* nn_cross_enropy_loss(GradTensor* src, GradTensor* truth);
 GradTensor* nn_mean_squared_error_loss(GradTensor* src, GradTensor* truth);
+GradTensor* nn_sigmoid(GradTensor* src);
+GradTensor* nn_tanh(GradTensor* src);
 
 #endif

@@ -33,3 +33,11 @@ GradTensor* nn_cross_enropy_loss(GradTensor* src, GradTensor* truth) {
 GradTensor* nn_mean_squared_error_loss(GradTensor* src, GradTensor* truth) {
     return gradt_mean_squared_error_loss(src, truth);
 }
+
+GradTensor* nn_sigmoid(GradTensor* src) {
+    return gradt_sigmoid(src);
+}
+
+GradTensor* nn_tanh(GradTensor* src) {
+    return gradt_tanh(src);
+}

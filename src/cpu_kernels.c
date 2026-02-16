@@ -78,7 +78,7 @@ void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result) {
 }
 
 void _tensor_kernel_add_bwd(Tensor* grad, const Tensor* result_grad, arena_allocator* arena) {
-    Tensor* red = result_grad;
+    const Tensor* red = result_grad;
     for (usize i = 0; i < 4; i++) {
         if (grad->shape[i] < result_grad->shape[i]) {
             red = tensor_reduce_add(red, i, arena);
@@ -494,5 +494,88 @@ void _tensor_kernel_mean_squared_error_bwd(const Tensor* src, const Tensor* trut
             usize idx = base + i;
             src_grad->data[idx] = k * (src->data[idx] - truth->data[idx]);
         }
+    }
+}
+
+void _tensor_kernel_sigmoid(const Tensor* src, Tensor* result) {
+    usize n_vecs = src->data_len / 16;
+    usize i = 0;
+    f32 temp[16];
+    __m512 ones_vec = _mm512_set1_ps(1.0);
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        for (usize j = 0; j < 16; j++) {
+            temp[j] = expf(-src->data[i+j]);
+        }
+        __m512 v = _mm512_loadu_ps(temp);
+        v = _mm512_add_ps(ones_vec, v);
+        v = _mm512_div_ps(ones_vec, v);
+        _mm512_storeu_ps(&result->data[i], v);
+        i += 16;
+    }
+
+    for (; i < src->data_len; i++) {
+        result->data[i] = 1 / (1 + expf(-src->data[i]));
+    }
+}
+
+void _tensor_kernel_mul_elemwise(const Tensor* a, const Tensor* b, Tensor* result) {
+    usize n_vecs = a->data_len / 16;
+    usize i = 0;
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        __m512 a_vec = _mm512_loadu_ps(&a->data[i]);
+        __m512 b_vec = _mm512_loadu_ps(&b->data[i]);
+        __m512 r_vec = _mm512_mul_ps(a_vec, b_vec);
+        _mm512_storeu_ps(&result->data[i], r_vec);
+        i += 16;
+    }
+
+    for (; i < a->data_len; i++) {
+        result->data[i] = a->data[i] * b->data[i];
+    }
+}
+
+void _tensor_kernel_sigmoid_bwd(Tensor* src_grad, const Tensor* result, const Tensor* result_grad) {
+    usize n_vecs = src_grad->data_len / 16;
+    usize i = 0;
+    __m512 ones_vec = _mm512_set1_ps(1.0);
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        __m512 r_vec = _mm512_loadu_ps(&result->data[i]);
+        __m512 t_vec = _mm512_sub_ps(ones_vec, r_vec);
+        r_vec = _mm512_mul_ps(r_vec, t_vec);
+        __m512 rg_vec = _mm512_loadu_ps(&result_grad->data[i]);
+        r_vec = _mm512_mul_ps(r_vec, rg_vec);
+        _mm512_storeu_ps(&src_grad->data[i], r_vec);
+        i += 16;
+    }
+
+    for (; i < src_grad->data_len; i++) {
+        f32 r = result->data[i];
+        src_grad->data[i] = r * (r - 1) * result_grad->data[i];
+    }
+}
+
+void _tensor_kernel_tanh(const Tensor* src, Tensor* result) {
+    for (usize i = 0; i < src->data_len; i++) {
+        result->data[i] = tanhf(src->data[i]);
+    }
+}
+
+void _tensor_kernel_tanh_bwd(Tensor* src_grad, const Tensor* result, const Tensor* result_grad) {
+    usize n_vecs = src_grad->data_len / 16;
+    usize i = 0;
+    __m512 ones_vec = _mm512_set1_ps(1.0);
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        __m512 r_vec = _mm512_loadu_ps(&result->data[i]);
+        r_vec = _mm512_mul_ps(r_vec, r_vec);
+        r_vec = _mm512_sub_ps(ones_vec, r_vec);
+        __m512 rg_vec = _mm512_loadu_ps(&result_grad->data[i]);
+        r_vec = _mm512_mul_ps(r_vec, rg_vec);
+        _mm512_storeu_ps(&result_grad->data[i], r_vec);
+        i += 16;
+    }
+
+    for (; i < src_grad->data_len; i++) {
+        f32 r = result->data[i];
+        src_grad->data[i] = (1 - r*r) * result_grad->data[i];
     }
 }

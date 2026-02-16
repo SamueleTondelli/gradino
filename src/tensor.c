@@ -240,3 +240,27 @@ Tensor* tensor_mean_squared_error(const Tensor* src, const Tensor* truth, arena_
     _tensor_kernel_mean_squared_error(src, truth, t);
     return t;
 }
+
+Tensor* tensor_sigmoid(const Tensor* src, arena_allocator* arena) {
+    Tensor* result = tensor_create(src->shape, 4, arena);
+    _tensor_kernel_sigmoid(src, result);
+    return result;
+}
+
+Tensor* tensor_mul_elemwise(const Tensor* a, const Tensor* b, arena_allocator* arena) {
+    for (usize i = 0; i < 4; i++) {
+        if (a->shape[i] != b->data[i]) {
+            return NULL;
+        }
+    }
+
+    Tensor* result = tensor_create(a->shape, 4, arena);
+    _tensor_kernel_mul_elemwise(a, b, result);
+    return result;
+}
+
+Tensor* tensor_tanh(const Tensor* src, arena_allocator* arena) {
+    Tensor* result = tensor_create(src->shape, 4, arena);
+    _tensor_kernel_tanh(src, result);
+    return result;
+}

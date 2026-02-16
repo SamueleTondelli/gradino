@@ -34,6 +34,9 @@ GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2);
 GradTensor* gradt_mul(GradTensor* gt1, GradTensor* gt2);
 GradTensor* gradt_cross_entropy_loss(GradTensor* src, GradTensor* truth);
 GradTensor* gradt_mean_squared_error_loss(GradTensor* src, GradTensor* truth);
+GradTensor* gradt_sigmoid(GradTensor* src);
+GradTensor* gradt_mul_elemwise(GradTensor* gt1, GradTensor* gt2);
+GradTensor* gradt_tanh(GradTensor* src);
 void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config);
 
 #endif

@@ -30,6 +30,7 @@ typedef double f64;
 
 void init_random();
 f32 random_f32(f32 min, f32 max);
+f32 random_f32_gaussian(f32 mean, f32 variance);
 u64 perf_counter_ns();
 
 typedef struct {

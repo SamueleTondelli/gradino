@@ -58,6 +58,13 @@ void tensor_randomize(Tensor* t, f32 min, f32 max) {
     }   
 }
 
+void tensor_randomize_gaussian(Tensor* t, f32 mean, f32 variance) {
+    usize data_len = t->data_len;
+    for (usize i = 0; i < data_len; i++) {
+        t->data[i] = random_f32_gaussian(mean, variance);
+    }   
+}
+
 void tensor_set(Tensor* t, f32 v) {
     for (usize i = 0; i < t->data_len; i++) {
         t->data[i] = v;
@@ -173,7 +180,7 @@ Tensor* tensor_reduce_add(const Tensor* src, usize dim, arena_allocator* arena) 
 }
 
 Tensor* tensor_cross_entropy(const Tensor* src, const Tensor* truth, arena_allocator* arena) {
-    if (src->shape[3] != truth->shape[3]) {
+    if (src->shape[3] != truth->shape[3] || src->shape[2] != truth->shape[2]) {
         return NULL;
     }
 
@@ -213,4 +220,23 @@ Tensor* tensor_add_scaled(const Tensor* a, const Tensor* b, f32 alpha, arena_all
     Tensor* result = tensor_create(a->shape, 4, arena);
     _tensor_kernel_add_scaled(a, b, alpha, result);
     return result;
+}
+
+Tensor* tensor_mean_squared_error(const Tensor* src, const Tensor* truth, arena_allocator* arena) {    
+    if (src->shape[3] != truth->shape[3] || src->shape[2] != truth->shape[2]) {
+        return NULL;
+    }
+
+    if (truth->shape[0] != 1 || truth->shape[1] != 1) {
+        return NULL;
+    }
+
+    if (src->shape[0] != 1 || src->shape[1] != 1) { // src->shape[2] can be != 1 for batches
+        return NULL;
+    }
+    
+    u32 shape[4] = {1, 1, 1, 1};
+    Tensor* t = tensor_create(shape, 4, arena);
+    _tensor_kernel_mean_squared_error(src, truth, t);
+    return t;
 }

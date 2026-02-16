@@ -11,7 +11,8 @@ typedef enum {
 typedef void(*mono_op_fwd)(const struct GradTensor_struct* src, struct GradTensor_struct* dst);
 typedef void(*mono_op_bwd)(struct GradTensor_struct* src, const struct GradTensor_struct* dst);
 typedef void(*bin_op_fwd)(const struct GradTensor_struct* src1, const struct GradTensor_struct* src2, struct GradTensor_struct* dst);
-typedef void(*bin_op_bwd)(struct GradTensor_struct* src1, struct GradTensor_struct* src2, const struct GradTensor_struct* dst);
+typedef void(*bin_op_bwd_src1)(struct GradTensor_struct* src1, const struct GradTensor_struct* src2, const struct GradTensor_struct* dst);
+typedef void(*bin_op_bwd_src2)(const struct GradTensor_struct* src1, struct GradTensor_struct* src2, const struct GradTensor_struct* dst);
 
 typedef struct {
     struct GradTensor_struct* src;
@@ -25,7 +26,8 @@ typedef struct {
     struct GradTensor_struct* src2;
     struct GradTensor_struct* dst;
     bin_op_fwd fwd;
-    bin_op_bwd bwd;
+    bin_op_bwd_src1 bwd_src1;
+    bin_op_bwd_src2 bwd_src2;
 } BinOp;
 
 typedef struct {
@@ -39,10 +41,11 @@ typedef struct {
 void op_fwd(Op* op);
 void op_bwd(Op* op);
 
-void op_set_nop(Op* op);
+void op_set_nop(Op* op, struct GradTensor_struct* dst);
 void op_set_relu(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst);
 void op_set_add(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst);
 void op_set_mul(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst);
 void op_set_cse(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* truth, struct GradTensor_struct* dst);
+void op_set_mse(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* truth, struct GradTensor_struct* dst);
 
 #endif

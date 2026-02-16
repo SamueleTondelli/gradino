@@ -217,9 +217,10 @@ void test_grad_bwd() {
     u32 in_shape[4] = {1, 1, 4, 8};
     printf("    Creating input batch\n");
     GradTensor* in = gradt_create_nograd(in_shape, 4);
+    tensor_randomize(in->tens, 0.0, 1.0);
     u32 true_labels[4] = {1, 4, 0, 12};    
     printf("    Creating label tensor\n");
-    GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4, false);
+    GradTensor* labels = gradt_create_from_labels(true_labels, 16, 4);
     printf("    Creating linear layer\n");
     LinearLayer lin = nn_linear_create(8, 16);
     for (i32 i = 0; i < 5; i++) {
@@ -234,4 +235,50 @@ void test_grad_bwd() {
 
     printf("    Destroying gradt arena\n");
     gradt_destroy_arena();
+}
+
+void test_xor(f32 lr, u32 hidden_size, u32 epochs) {
+    printf("test_xor with lr %f, hidden_size %u, for %u epochs\n", lr, hidden_size, epochs);
+
+    arena_allocator* permanent_arena = arena_create(GiB(1), MiB(1), 8);
+    gradt_set_arena(permanent_arena);
+
+    SGDMomentumConfig optim_conf = optim_sgd_momentum_get_config(lr, 0.9);
+    
+    u32 in_shape[4] = {1, 1, 4, 2};
+    GradTensor* in = gradt_create_nograd(in_shape, 4);
+    in->tens->data[0] = 0.0;
+    in->tens->data[1] = 0.0;
+    in->tens->data[2] = 1.0;
+    in->tens->data[3] = 0.0;
+    in->tens->data[4] = 0.0;
+    in->tens->data[5] = 1.0;
+    in->tens->data[6] = 1.0;
+    in->tens->data[7] = 1.0;
+
+    u32 truth_shape[4] = {1, 1, 4, 1};
+    GradTensor* truth = gradt_create_nograd(truth_shape, 4);
+    truth->tens->data[0] = 0.0;
+    truth->tens->data[1] = 1.0;
+    truth->tens->data[2] = 1.0;
+    truth->tens->data[3] = 0.0;
+
+    LinearLayer hidden = nn_linear_create(2, hidden_size);
+    LinearLayer out_layer = nn_linear_create(hidden_size, 1);
+
+    arena_allocator* epoch_arena = arena_create(GiB(1), MiB(1), 8);
+    gradt_set_arena(epoch_arena);
+    for (u32 i = 0; i < epochs; i++) {
+        GradTensor* x = nn_linear_forward(&hidden, in);
+        x = nn_relu(x);
+        x = nn_linear_forward(&out_layer, x);
+        GradTensor* loss = nn_mean_squared_error_loss(x, truth);
+        gradt_backward(loss, optim_sgd_momentum, &optim_conf);
+        printf("    Epoch %u, Loss %f\n", i, loss->tens->data[0]);
+        gradt_free_arena();
+    }
+
+    printf("    Destroying gradt arena\n");
+    gradt_destroy_arena();
+    arena_destroy(permanent_arena);
 }

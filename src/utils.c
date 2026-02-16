@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 void init_random() {
     srand(time(NULL));
@@ -10,6 +11,13 @@ void init_random() {
 f32 random_f32(f32 min, f32 max) {
     f32 scale = rand() / (float)RAND_MAX;
     return min + scale * (max - min);
+}
+
+f32 random_f32_gaussian(f32 mean, f32 variance) {
+    f32 u1 = random_f32(0.0f, 1.0f);
+    f32 u2 = random_f32(0.0f, 1.0f);
+    f32 z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * M_PI * u2);
+    return mean + z * sqrtf(variance);
 }
 
 u64 perf_counter_ns() {
@@ -27,7 +35,7 @@ DynArray create_dynarr(usize cap) {
 void push_dynarr(DynArray* a, void* el){
     if (a->len >= a->cap) {
         a->cap *= 1.5;
-        a->ptr = realloc(a->ptr, a->cap);
+        a->ptr = realloc(a->ptr, a->cap * sizeof(void*));
     }
     a->ptr[a->len] = el;
     a->len++;

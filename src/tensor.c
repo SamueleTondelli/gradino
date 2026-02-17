@@ -249,7 +249,7 @@ Tensor* tensor_sigmoid(const Tensor* src, arena_allocator* arena) {
 
 Tensor* tensor_mul_elemwise(const Tensor* a, const Tensor* b, arena_allocator* arena) {
     for (usize i = 0; i < 4; i++) {
-        if (a->shape[i] != b->data[i]) {
+        if (a->shape[i] != b->shape[i]) {
             return NULL;
         }
     }
@@ -262,5 +262,11 @@ Tensor* tensor_mul_elemwise(const Tensor* a, const Tensor* b, arena_allocator* a
 Tensor* tensor_tanh(const Tensor* src, arena_allocator* arena) {
     Tensor* result = tensor_create(src->shape, 4, arena);
     _tensor_kernel_tanh(src, result);
+    return result;
+}
+
+Tensor* tensor_mul_scalar(const Tensor* src, f32 v, arena_allocator* arena) {
+    Tensor* result = tensor_create(src->shape, 4, arena);
+    _tensor_kernel_mul_scalar(src, v, result);
     return result;
 }

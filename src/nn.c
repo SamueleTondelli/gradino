@@ -8,8 +8,8 @@ LinearLayer nn_linear_create(u32 in, u32 out) {
         .b = gradt_create(b_shape, 4),
         ._proj = NULL
     };
-    l.w->optimize = true;
-    l.b->optimize = true;
+    gradt_enable_optim(l.w);
+    gradt_enable_optim(l.b);
 
     f32 variance = 2.0 / ((f32)in + out);
     tensor_randomize_gaussian(l.w->tens, 0.0, 1/(variance));

@@ -10,6 +10,6 @@ int main() {
     // test_arena(GiB(4), MiB(1), KiB(500), 100);
     // test_grad_relu();
     // test_grad_bwd();
-    // test_xor(5e-3, 16, 10);
-    test_bwd_perf(5e-3, 256, 128, 128, 64, 10);
+    // test_xor(1e-3, 16, 50);
+    test_bwd_perf(5e-3, 256, 128, 256, 64, 5);
 }

@@ -34,6 +34,7 @@ Tensor* tensor_sigmoid(const Tensor* src, arena_allocator* arena);
 // no broadcasting
 Tensor* tensor_mul_elemwise(const Tensor* a, const Tensor* b, arena_allocator* arena);
 Tensor* tensor_tanh(const Tensor* src, arena_allocator* arena);
+Tensor* tensor_mul_scalar(const Tensor* src, f32 v, arena_allocator* arena);
 
 void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result);
 void _tensor_kernel_add_bwd(Tensor* grad, const Tensor* result_grad, arena_allocator* arena);
@@ -57,5 +58,7 @@ void _tensor_kernel_mul_elemwise(const Tensor* a, const Tensor* b, Tensor* resul
 void _tensor_kernel_sigmoid_bwd(Tensor* src_grad, const Tensor* result, const Tensor* result_grad);
 void _tensor_kernel_tanh(const Tensor* src, Tensor* result);
 void _tensor_kernel_tanh_bwd(Tensor* src_grad, const Tensor* result, const Tensor* result_grad);
+void _tensor_kernel_mul_scalar(const Tensor* src, f32 v, Tensor* result);
+void _tensor_kernel_adam_update(Tensor* param, const Tensor* m1_scaled, const Tensor* m2_scaled, f32 epsilon, f32 lr);
 
 #endif

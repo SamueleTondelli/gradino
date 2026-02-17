@@ -579,3 +579,44 @@ void _tensor_kernel_tanh_bwd(Tensor* src_grad, const Tensor* result, const Tenso
         src_grad->data[i] = (1 - r*r) * result_grad->data[i];
     }
 }
+
+void _tensor_kernel_mul_scalar(const Tensor* src, f32 v, Tensor* result) {
+    usize n_vecs = src->data_len / 16;
+    __m512 sv = _mm512_set1_ps(v);
+    usize i = 0;
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        __m512 srcv = _mm512_loadu_ps(&src->data[i]);
+        srcv = _mm512_mul_ps(sv, srcv);
+        _mm512_storeu_ps(&result->data[i], srcv);
+        i += 16;
+    }
+
+    for (; i < src->data_len; i++) {
+        result->data[i] = v * src->data[i];
+    }
+}
+
+void _tensor_kernel_adam_update(Tensor* param, const Tensor* m1_scaled, const Tensor* m2_scaled, f32 epsilon, f32 lr) {
+    usize n_vecs = param->data_len / 16;
+    __m512 lr_vec = _mm512_set1_ps(lr);
+    __m512 eps_vec = _mm512_set1_ps(epsilon);
+    usize i = 0;
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        __m512 m2_vec = _mm512_loadu_ps(&m2_scaled->data[i]);
+        m2_vec = _mm512_sqrt_ps(m2_vec);
+        m2_vec = _mm512_add_ps(m2_vec, eps_vec);
+        __m512 m1_vec = _mm512_loadu_ps(&m1_scaled->data[i]);
+        __m512 update_vec = _mm512_div_ps(m1_vec, m2_vec);
+        update_vec = _mm512_mul_ps(update_vec, lr_vec);
+        __m512 p_vec = _mm512_loadu_ps(&param->data[i]);
+        p_vec = _mm512_sub_ps(p_vec, update_vec);
+        _mm512_storeu_ps(&param->data[i], p_vec);
+        i += 16;
+    }
+
+    for (; i < param->data_len; i++) {
+        f32 m2 = sqrtf(m2_scaled->data[i]) + epsilon;
+        f32 update = lr * (m1_scaled->data[i] / m2);
+        param->data[i] -= update;
+    }
+}

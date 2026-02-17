@@ -13,6 +13,9 @@ typedef struct GradTensor_struct {
     Op op; // op which generates this tensor (dst = this)
     bool optimize;
     bool _grad_computed; // grad already computed in bwd pass, so add instead of replacing
+    // Adam stuff
+    Tensor* _first_moment;
+    Tensor* _second_moment;
 } GradTensor;
 
 typedef void(*Optimizer)(GradTensor* gt, void* optim_config);
@@ -28,6 +31,7 @@ GradTensor* gradt_create(u32* shape, usize shape_len);
 GradTensor* gradt_create_from_tens(Tensor* tens);
 GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels);
 GradTensor* gradt_create_nograd(u32* shape, usize shape_len);
+void gradt_enable_optim(GradTensor* gt);
 
 GradTensor* gradt_relu(GradTensor* gt);
 GradTensor* gradt_add(GradTensor* gt1, GradTensor* gt2);

@@ -18,4 +18,16 @@ typedef struct {
 void optim_sgd_momentum(GradTensor* gt, void* sgd_momentum_config);
 SGDMomentumConfig optim_sgd_momentum_get_config(f32 lr, f32 mu);
 
+typedef struct {
+    f32 lr;
+    f32 beta_1;
+    f32 beta_2;
+    f32 epsilon;
+    f32 _t;
+} AdamConfig;
+
+void optim_adam(GradTensor* gt, void* adam_config);
+AdamConfig optim_adam_get_config(f32 lr);
+void optim_adam_step(AdamConfig* config);
+
 #endif

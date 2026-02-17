@@ -67,8 +67,8 @@ GradTensor* gradt_create_from_labels(u32* labels, u32 n_classes, u32 n_labels) {
     u32 shape[4] = {1, 1, n_labels, n_classes};
     Tensor* t = tensor_create(shape, 4, gradt_arena);
     for (usize l = 0; l < n_labels; l++) {
-        usize base = t->stride[2];
-        for (usize i = 0; i < n_labels; i++) {
+        usize base = l * t->stride[2];
+        for (usize i = 0; i < n_classes; i++) {
             usize idx = base + i;
             if (labels[l] == i) {
                 t->data[idx] = 1.0;

@@ -27,6 +27,16 @@ Tensor* tensor_create(const u32* shape, usize shape_len, arena_allocator* arena)
     return t;
 }
 
+Tensor* tensor_copy(const Tensor* src, arena_allocator* arena) {
+    Tensor* t = arena_alloc(arena, sizeof(Tensor), 1);
+    memcpy(t->shape, src->shape, 4 * sizeof(u32));
+    memcpy(t->stride, src->stride, 4 * sizeof(u32));
+    t->data_len = src->data_len;
+    t->data = arena_alloc(arena, sizeof(f32), t->data_len);
+    memcpy(t->data, src->data, t->data_len * sizeof(f32));
+    return t;
+}
+
 void tensor_print(const Tensor* t, bool print_data) {
     printf("Shape: [");
     for (int i = 0; i < 4; i++) {

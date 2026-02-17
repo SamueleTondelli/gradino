@@ -30,4 +30,13 @@ void optim_adam(GradTensor* gt, void* adam_config);
 AdamConfig optim_adam_get_config(f32 lr);
 void optim_adam_step(AdamConfig* config);
 
+typedef struct {
+    AdamConfig adam_config;
+    f32 weight_decay;
+} AdamWConfig;
+
+void optim_adamw(GradTensor* gt, void* adamw_config);
+AdamWConfig optim_adamw_get_config(f32 lr, f32 weight_decay);
+void optim_adamw_step(AdamWConfig* config);
+
 #endif

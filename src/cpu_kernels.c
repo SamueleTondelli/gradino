@@ -29,7 +29,7 @@ void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result) {
                 index[3] += 16;
             }
 
-            for (usize k = index[3]; k < result->shape[3]; k++) {
+            for (; index[3] < result->shape[3]; index[3]++) {
                 u32 a_offset = 0, b_offset = 0, res_offset = 0;
                 for (int i = 0; i < 4; i++) {
                     a_offset += index[i] * a->stride[i];
@@ -407,15 +407,14 @@ void _tensor_kernel_cross_entropy(const Tensor* src, const Tensor* truth, Tensor
     f32 ce = 0.0;
     for (usize j = 0; j < src->shape[2]; j++) {
         f32 acc = 0.0;
+        f32 logit_sum = 0.0;
         usize base = src->stride[2] * j;
-        for (usize i = 0; i < src->data_len; i++) {
+        for (usize i = 0; i < src->shape[3]; i++) {
             usize idx = base + i;
-            if (truth->data[idx] >= 0.99) { // fp stuff
-                ce = -src->data[idx];
-            }
+            logit_sum += truth->data[idx] * src->data[idx];
             acc += expf(src->data[idx]);
         }
-        ce += logf(acc) / (f32)src->shape[2];
+        ce += (-logit_sum + logf(acc)) / (f32)src->shape[2];
     }
     result->data[0] = ce;
 }
@@ -468,7 +467,7 @@ void _tensor_kernel_add_scaled(const Tensor* a, const Tensor* b, f32 alpha, Tens
     }
 
     for (; i < a->data_len; i++) {
-        result->data[i] = a->data[i] - alpha * b->data[i];
+        result->data[i] = a->data[i] + alpha * b->data[i];
     }
 }
 
@@ -550,7 +549,7 @@ void _tensor_kernel_sigmoid_bwd(Tensor* src_grad, const Tensor* result, const Te
 
     for (; i < src_grad->data_len; i++) {
         f32 r = result->data[i];
-        src_grad->data[i] = r * (r - 1) * result_grad->data[i];
+        src_grad->data[i] = r * (1 - r) * result_grad->data[i];
     }
 }
 
@@ -570,7 +569,7 @@ void _tensor_kernel_tanh_bwd(Tensor* src_grad, const Tensor* result, const Tenso
         r_vec = _mm512_sub_ps(ones_vec, r_vec);
         __m512 rg_vec = _mm512_loadu_ps(&result_grad->data[i]);
         r_vec = _mm512_mul_ps(r_vec, rg_vec);
-        _mm512_storeu_ps(&result_grad->data[i], r_vec);
+        _mm512_storeu_ps(&src_grad->data[i], r_vec);
         i += 16;
     }
 

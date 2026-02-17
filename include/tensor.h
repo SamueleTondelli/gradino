@@ -14,6 +14,7 @@ typedef struct {
 } Tensor;
 
 Tensor* tensor_create(const u32* shape, usize shape_len, arena_allocator* arena);
+Tensor* tensor_copy(const Tensor* src, arena_allocator* arena);
 
 void tensor_print(const Tensor* t, bool print_data);
 void tensor_randomize(Tensor* t, f32 min, f32 max);

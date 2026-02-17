@@ -237,12 +237,12 @@ void test_grad_bwd() {
     gradt_destroy_arena();
 }
 
-void test_xor(f32 lr, u32 hidden_size, u32 epochs) {
-    printf("test_xor with lr %f, hidden_size %u, for %u epochs\n", lr, hidden_size, epochs);
+void test_xor(f32 lr, f32 weight_decay, u32 hidden_size, u32 epochs) {
+    printf("test_xor with lr %f, weight decay %f, hidden_size %u, for %u epochs\n", lr, weight_decay, hidden_size, epochs);
     arena_allocator* permanent_arena = arena_create(GiB(1), MiB(1), 8);
     gradt_set_arena(permanent_arena);
 
-    AdamConfig adam_config = optim_adam_get_config(lr);
+    AdamWConfig adamw_config = optim_adamw_get_config(lr, weight_decay);
     
     u32 in_shape[4] = {1, 1, 4, 2};
     GradTensor* in = gradt_create_nograd(in_shape, 4);
@@ -272,8 +272,8 @@ void test_xor(f32 lr, u32 hidden_size, u32 epochs) {
         x = nn_relu(x);
         x = nn_linear_forward(&out_layer, x);
         GradTensor* loss = nn_mean_squared_error_loss(x, truth);
-        gradt_backward(loss, optim_adam, &adam_config);
-        optim_adam_step(&adam_config);
+        gradt_backward(loss, optim_adamw, &adamw_config);
+        optim_adamw_step(&adamw_config);
         printf("    Epoch %u, Loss %f\n", i, loss->tens->data[0]);
         gradt_free_arena();
     }
@@ -294,7 +294,8 @@ void test_bwd_perf(f32 lr, u32 hidden_size, u32 bs, u32 io_dim, u32 n_batches, u
     gradt_set_arena(permanent_arena);
 
     // SGDMomentumConfig optim_conf = optim_sgd_momentum_get_config(lr, 0.9);
-    AdamConfig adam_conf = optim_adam_get_config(lr);
+    // AdamConfig adam_conf = optim_adam_get_config(lr);
+    AdamWConfig adamw_conf = optim_adamw_get_config(lr, 1e-4);
 
     u32 inout_shape[4] = {1, 1, bs, io_dim};
     GradTensor** inputs = malloc(n_batches * sizeof(GradTensor*));
@@ -329,8 +330,10 @@ void test_bwd_perf(f32 lr, u32 hidden_size, u32 bs, u32 io_dim, u32 n_batches, u
             GradTensor* loss = nn_mean_squared_error_loss(x, truths[b]);
             u64 fwd_end = perf_counter_ns();
             // gradt_backward(loss, optim_sgd_momentum, &optim_conf);
-            gradt_backward(loss, optim_adam, &adam_conf);
-            optim_adam_step(&adam_conf);
+            // gradt_backward(loss, optim_adam, &adam_conf);
+            // optim_adam_step(&adam_conf);
+            gradt_backward(loss, optim_adamw, &adamw_conf);
+            optim_adamw_step(&adamw_conf);
             u64 bwd_end = perf_counter_ns();
             arena_free(epoch_arena);
             u64 free_end = perf_counter_ns();

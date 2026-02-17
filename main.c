@@ -4,12 +4,12 @@
 int main() {
     init_random();
 
-    // test_add(1024, 1024);
-    // test_mul(512, 512, 512);
-    // test_reduce_add(128, 128, 2);
-    // test_arena(GiB(4), MiB(1), KiB(500), 100);
-    // test_grad_relu();
-    // test_grad_bwd();
-    // test_xor(1e-3, 16, 50);
+    test_add(1024, 1024);
+    test_mul(512, 512, 512);
+    test_reduce_add(128, 128, 2);
+    test_arena(GiB(4), MiB(1), KiB(500), 100);
+    test_grad_relu();
+    test_grad_bwd();
+    test_xor(1e-3, 16, 10);
     test_bwd_perf(5e-3, 256, 128, 256, 64, 5);
 }

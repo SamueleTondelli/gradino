@@ -39,9 +39,8 @@ GradTensor* gradt_create(u32* shape, usize shape_len) {
     GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
     gt->tens = tensor_create(shape, shape_len, gradt_arena);
     gt->grad = tensor_create(shape, shape_len, gradt_arena);
-    gt->prev_grad = tensor_create(shape, shape_len, gradt_arena);
+    gt->prev_grad = NULL;
     tensor_set(gt->grad, 0.0);
-    tensor_set(gt->prev_grad, 0.0);
     gt->optimize = false;
     gt->_grad_computed = false;
     op_set_nop(&gt->op, gt);
@@ -54,11 +53,10 @@ GradTensor* gradt_create_from_tens(Tensor* tens) {
     GradTensor* gt = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
     gt->tens = tens;
     gt->grad = tensor_create(tens->shape, 4, gradt_arena);
-    gt->prev_grad = tensor_create(tens->shape, 4, gradt_arena);
+    gt->prev_grad = NULL;
     gt->optimize = false;
     gt->_grad_computed = false;
     tensor_set(gt->grad, 0.0);
-    tensor_set(gt->prev_grad, 0.0);
     op_set_nop(&gt->op, gt);
     gt->_first_moment = NULL;
     gt->_second_moment = NULL;
@@ -102,6 +100,8 @@ GradTensor* gradt_create_nograd(u32* shape, usize shape_len) {
 
 void gradt_enable_optim(GradTensor* gt) {
     gt->optimize = true;
+    gt->prev_grad = tensor_create(gt->tens->shape, 4, gradt_arena);
+    tensor_set(gt->prev_grad, 0.0);
     gt->_first_moment = tensor_create(gt->tens->shape, 4, gradt_arena);
     tensor_set(gt->_first_moment, 0.0);
     gt->_second_moment = tensor_create(gt->tens->shape, 4, gradt_arena);

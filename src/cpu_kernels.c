@@ -121,12 +121,11 @@ static inline void mmul_6x16(const f32* a, const f32* b, f32* res, u32 a_cols, u
 
 // https://salykova.github.io/gemm-cpu
 static void matmul_tile6x16(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
-    u32 n, m;
     #pragma omp parallel for
     for (u32 i = 0; i < a_rows; i += 6) {
-        n = (a_rows - i) >= 6 ? 6 : (a_rows - i);
+        u32 n = (a_rows - i) >= 6 ? 6 : (a_rows - i);
         for (u32 j = 0; j < b_cols; j += 16) {
-            m = (b_cols - j) >= 16 ? 16 : (b_cols - j);
+            u32 m = (b_cols - j) >= 16 ? 16 : (b_cols - j);
             // printf("mmul_6x16 at (%u, %u) (%u, %u): a[%u], b[%u], res[%u]\n", i, j, m, n, i*a_cols, j, i*b_cols + j);
             mmul_6x16(&a[i * a_cols], &b[j], &res[i * b_cols + j], a_cols, b_cols, n, m);
         }

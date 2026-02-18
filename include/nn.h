@@ -24,6 +24,8 @@ typedef struct {
     LinearLayer out_gate;
     u32 in_size;
     u32 hidden_size;
+    GradTensor** hidden_states;
+    GradTensor** cec_states;
 } LSTM;
 
 LSTM nn_lstm_init(u32 in, u32 hidden);

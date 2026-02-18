@@ -49,7 +49,9 @@ LSTM nn_lstm_init(u32 in, u32 hidden) {
         .for_gate = nn_linear_create(in + hidden, hidden),
         .out_gate = nn_linear_create(in + hidden, hidden),
         .in_size = in,
-        .hidden_size = hidden
+        .hidden_size = hidden,
+        .hidden_states = NULL,
+        .cec_states = NULL
     };
     return l;
 }
@@ -62,6 +64,11 @@ GradTensor* nn_lstm_forward(LSTM* lstm, GradTensor* in) {
     GradTensor** steps = gradt_create_split_views(in, 1);
 
     u32 hidden_shape[4] = {1, 1, in->tens->shape[2], lstm->hidden_size};
+    
+    arena_allocator* arena = _gradt_get_arena();
+    lstm->hidden_states = arena_alloc(arena, sizeof(GradTensor*), n_step);
+    lstm->cec_states = arena_alloc(arena, sizeof(GradTensor*), n_step);
+
     GradTensor* hs = gradt_create(hidden_shape, 4);
     tensor_set(hs->tens, 0.0);
     GradTensor* cec = gradt_create(hidden_shape, 4);
@@ -85,6 +92,9 @@ GradTensor* nn_lstm_forward(LSTM* lstm, GradTensor* in) {
         GradTensor* new_hs = nn_tanh(cec);
 
         hs = gradt_mul_elemwise(new_hs, o_t);
+
+        lstm->hidden_states[i] = hs;
+        lstm->cec_states[i] = cec;
     }
     
     return hs;

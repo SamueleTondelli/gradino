@@ -227,3 +227,27 @@ void op_set_tanh(Op* op, struct GradTensor_struct* src, struct GradTensor_struct
     op->op.mono.fwd = tanh_fwd;
     op->op.mono.bwd = tanh_bwd;
 }
+
+static void concat_fwd(const GradTensor* src1, const GradTensor* src2, GradTensor* dst) {
+    // technically we would need to pass the concat_dim, but as of now there's no way to pass additional params to ops fwd/bwd,
+    // but the fwd is basically never called so it shouldn't matter idk
+    UNIMPL();
+}
+
+static void concat_bwd_src1(GradTensor* src1, const GradTensor* src2, const GradTensor* dst) {
+    _tensor_kernel_concat_bwd_a(src1->grad, src2->tens, dst->grad);
+}
+
+static void concat_bwd_src2(const GradTensor* src1, GradTensor* src2, const GradTensor* dst) {
+    _tensor_kernel_concat_bwd_b(src1->tens, src2->grad, dst->grad);
+}
+
+void op_set_concat(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst) {
+    op->type = Binary;
+    op->op.bin.src1 = src1;
+    op->op.bin.src2 = src2;
+    op->op.bin.dst = dst;
+    op->op.bin.fwd = concat_fwd;
+    op->op.bin.bwd_src1 = concat_bwd_src1;
+    op->op.bin.bwd_src2 = concat_bwd_src2;
+}

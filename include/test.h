@@ -11,5 +11,7 @@ void test_grad_relu();
 void test_grad_bwd();
 void test_xor(f32 lr, f32 weight_decay, u32 hidden_size, u32 epochs);
 void test_bwd_perf(f32 lr, u32 hidden_size, u32 bs, u32 io_dim, u32 n_batches, u32 epochs);
+void test_split_views();
+void test_concat();
 
 #endif

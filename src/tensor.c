@@ -37,6 +37,37 @@ Tensor* tensor_copy(const Tensor* src, arena_allocator* arena) {
     return t;
 }
 
+Tensor** tensor_create_split_views(const Tensor* src, u32 split_dim, arena_allocator* arena) {
+    if (split_dim >= 4) {
+        return NULL;
+    }
+
+    for (u32 i = 0; i < split_dim; i++) {
+        if (src->shape[i] != 1) {
+            return NULL;
+        }
+    }
+
+    u32 n_views = src->shape[split_dim];
+    Tensor** views = arena_alloc(arena, sizeof(Tensor*), n_views);
+    for (u32 i = 0; i < n_views; i++) {
+        views[i] = arena_alloc(arena, sizeof(Tensor), 1);
+        usize data_offset = src->stride[split_dim] * i;
+        views[i]->data_len = src->stride[split_dim];
+        views[i]->data = &src->data[data_offset];
+        u32 j = 0;
+        for (; j <= split_dim; j++) {
+            views[i]->shape[j] = 1;
+            views[i]->stride[j] = 0;
+        }
+        for (; j < 4; j++) {
+            views[i]->shape[j] = src->shape[j];
+            views[i]->stride[j] = src->stride[j];
+        }
+    }
+    return views;
+}
+
 void tensor_print(const Tensor* t, bool print_data) {
     printf("Shape: [");
     for (int i = 0; i < 4; i++) {
@@ -278,5 +309,30 @@ Tensor* tensor_tanh(const Tensor* src, arena_allocator* arena) {
 Tensor* tensor_mul_scalar(const Tensor* src, f32 v, arena_allocator* arena) {
     Tensor* result = tensor_create(src->shape, 4, arena);
     _tensor_kernel_mul_scalar(src, v, result);
+    return result;
+}
+
+Tensor* tensor_concat(const Tensor* a, const Tensor* b, u32 concat_dim, arena_allocator* arena) {
+    if (concat_dim >= 4) {
+        return NULL;
+    }
+
+    u32 result_shape[4];
+    for (u32 i = 0; i < concat_dim; i++) {
+        if (a->shape[i] != b->shape[i] && !(a->shape[i] == 1 || b->shape[i] == 1)) {
+            return NULL;
+        }
+        result_shape[i] = a->shape[i] > b->shape[i] ? a->shape[i] : b->shape[i];
+    }
+    result_shape[concat_dim] = a->shape[concat_dim] + b->shape[concat_dim];
+    for (u32 i = concat_dim+1; i < 4; i++) {
+        if (a->shape[i] != b->shape[i]) {
+            return NULL;
+        }
+        result_shape[i] = a->shape[i];
+    }
+
+    Tensor* result = tensor_create(result_shape, 4, arena);
+    _tensor_kernel_concat(a, b, concat_dim, result);
     return result;
 }

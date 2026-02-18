@@ -50,5 +50,6 @@ void op_set_mse(Op* op, struct GradTensor_struct* src, struct GradTensor_struct*
 void op_set_sigmoid(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst);
 void op_set_mul_elemwise(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst);
 void op_set_tanh(Op* op, struct GradTensor_struct* src, struct GradTensor_struct* dst);
+void op_set_concat(Op* op, struct GradTensor_struct* src1, struct GradTensor_struct* src2, struct GradTensor_struct* dst);
 
 #endif

@@ -6,41 +6,36 @@
 #include <x86intrin.h>
 #include <string.h>
 
+static inline void vadd(const f32* a, const f32* b, f32* result, usize vlen) {
+    usize n_vecs = vlen / 16;
+    usize i = 0;
+    for (usize iv = 0; iv < n_vecs; iv++) {
+        __m512 a_v = _mm512_loadu_ps(&a[i]);
+        __m512 b_v = _mm512_loadu_ps(&b[i]);
+        __m512 r_v = _mm512_add_ps(a_v, b_v);
+        _mm512_storeu_ps(&result[i], r_v);
+        i += 16;
+    }
+    for (; i < vlen; i++) {
+        result[i] = a[i] + b[i];
+    }
+}
+
 void _tensor_kernel_add(const Tensor* a, const Tensor* b, Tensor* result) {
     u32 index[4] = {0, 0, 0, 0};
     if (a->shape[3] == b->shape[3] && a->shape[3] >= 16) {
         usize total_rows = result->shape[0] * result->shape[1] * result->shape[2];
         usize row_idx = 0;
-        usize vecs = result->shape[3] / 16; 
         while (row_idx < total_rows) {
-            for (usize k = 0; k < vecs; k++) {
-                u32 a_offset = 0, b_offset = 0, res_offset = 0;
-                for (int i = 0; i < 4; i++) {
-                    a_offset += index[i] * a->stride[i];
-                    b_offset += index[i] * b->stride[i];
-                    res_offset += index[i] * result->stride[i];
-                }
-
-                __m512 a_vec = _mm512_loadu_ps(&a->data[a_offset]);
-                __m512 b_vec = _mm512_loadu_ps(&b->data[b_offset]);
-                __m512 res_vec = _mm512_add_ps(a_vec, b_vec);
-                _mm512_storeu_ps(&result->data[res_offset], res_vec);
-
-                index[3] += 16;
+            usize a_base = 0, b_base = 0, r_base = 0;
+            for (i32 i = 0; i < 3; i++) {
+                a_base += index[i] * a->stride[i];
+                b_base += index[i] * b->stride[i];
+                r_base += index[i] * result->stride[i];
             }
 
-            for (; index[3] < result->shape[3]; index[3]++) {
-                u32 a_offset = 0, b_offset = 0, res_offset = 0;
-                for (int i = 0; i < 4; i++) {
-                    a_offset += index[i] * a->stride[i];
-                    b_offset += index[i] * b->stride[i];
-                    res_offset += index[i] * result->stride[i];
-                }
-
-                result->data[res_offset] = a->data[a_offset] + b->data[b_offset];
-            }
+            vadd(&a->data[a_base], &b->data[b_base], &result->data[r_base], a->shape[3]);
             
-            index[3] = 0;
             for (int i = 2; i >= 0; i--) {
                 index[i]++;
                 if (index[i] < result->shape[i]) {
@@ -169,10 +164,6 @@ void _tensor_kernel_relu(const Tensor* src, Tensor* dst) {
         }
     }
 
-    // for (usize i = 0; i < src->data_len; i++) {
-    //     dst->data[i] = (src->data[i] > 0.0) ? src->data[i] : 0.0;
-    // }
-
     u32 vecs = src->data_len / 16;
     usize i = 0;
     __m512 zerov = _mm512_setzero_ps();
@@ -196,9 +187,6 @@ void _tensor_kernel_relu_bwd(const Tensor* src, Tensor* src_grad, const Tensor* 
         }
     }
 
-    // for (usize i = 0; i < src->data_len; i++) {
-    //     src_grad->data[i] = (src->data[i] > 0.0) ? in_grad->data[i] : 0.0;
-    // }
     u32 vecs = src->data_len / 16;
     usize i = 0;
     __m512 zerov = _mm512_setzero_ps();
@@ -617,5 +605,125 @@ void _tensor_kernel_adam_update(Tensor* param, const Tensor* m1_scaled, const Te
         f32 m2 = sqrtf(m2_scaled->data[i]) + epsilon;
         f32 update = lr * (m1_scaled->data[i] / m2);
         param->data[i] -= update;
+    }
+}
+
+void _tensor_kernel_concat(const Tensor* a, const Tensor* b, u32 concat_dim, Tensor* result) {
+    u32 idx[4] = {0, 0, 0, 0};
+    usize n_concats = 1;
+    for (u32 i = 0; i < concat_dim; i++) {
+        n_concats *= result->shape[i];
+    }
+
+    usize a_copylen = 1, b_copylen = 1;
+    for (u32 i = concat_dim; i < 4; i++) {
+        a_copylen *= a->shape[i];
+        b_copylen *= b->shape[i];
+    }
+    
+    for (usize j = 0; j < n_concats; j++) {
+        usize a_offset = 0, b_offset = 0, r_offset = 0;
+        for (u32 i = 0; i < concat_dim; i++) {
+            a_offset += idx[i] * a->stride[i];
+            b_offset += idx[i] * b->stride[i];
+            r_offset += idx[i] * result->stride[i];
+        }
+
+        memcpy(&result->data[r_offset], &a->data[a_offset], a_copylen * sizeof(f32));
+        memcpy(&result->data[r_offset + a_copylen], &b->data[b_offset], b_copylen * sizeof(f32));
+
+        for (i32 i = ((i32)concat_dim) - 1; i >= 0; i--) {
+            idx[i]++;
+            if (idx[i] < result->shape[i]) {
+                break;
+            } else {
+                idx[i] = 0;
+            }
+        }
+    }
+}
+
+static inline void memsetf(f32 *p, f32 v, usize n) {
+    for (usize i = 0; i < n; i++) {
+        p[i] = v;
+    }
+}
+
+void _tensor_kernel_concat_bwd_a(Tensor* a_grad, const Tensor* b, const Tensor* result_grad) {
+    u32 concat_dim = 0;
+    for (; concat_dim < 4; concat_dim++) {
+        if (a_grad->shape[concat_dim] + b->shape[concat_dim] == result_grad->shape[concat_dim]) {
+            break;
+        }
+    }
+
+    u32 idx[4] = {0, 0, 0, 0};
+    usize n_concats = 1;
+    for (u32 i = 0; i < concat_dim; i++) {
+        n_concats *= result_grad->shape[i];
+    }
+
+    usize a_copylen = 1;
+    for (u32 i = concat_dim; i < 4; i++) {
+        a_copylen *= a_grad->shape[i];
+    }
+    memsetf(a_grad->data, 0.0, a_grad->data_len);
+    for (usize j = 0; j < n_concats; j++) {
+        usize a_offset = 0, r_offset = 0;
+        for (u32 i = 0; i < concat_dim; i++) {
+            a_offset += idx[i] * a_grad->stride[i];
+            r_offset += idx[i] * result_grad->stride[i];
+        }
+
+        vadd(&a_grad->data[a_offset], &result_grad->data[r_offset], &a_grad->data[a_offset], a_copylen);
+        
+        for (i32 i = ((i32)concat_dim) - 1; i >= 0; i--) {
+            idx[i]++;
+            if (idx[i] < result_grad->shape[i]) {
+                break;
+            } else {
+                idx[i] = 0;
+            }
+        }
+    }
+}
+
+void _tensor_kernel_concat_bwd_b(const Tensor* a, Tensor* b_grad, const Tensor* result_grad) {
+    u32 concat_dim = 0;
+    for (; concat_dim < 4; concat_dim++) {
+        if (a->shape[concat_dim] + b_grad->shape[concat_dim] == result_grad->shape[concat_dim]) {
+            break;
+        }
+    }
+
+    u32 idx[4] = {0, 0, 0, 0};
+    usize n_concats = 1;
+    for (u32 i = 0; i < concat_dim; i++) {
+        n_concats *= result_grad->shape[i];
+    }
+
+    usize a_copylen = 1, b_copylen = 1;
+    for (u32 i = concat_dim; i < 4; i++) {
+        a_copylen *= a->shape[i];
+        b_copylen *= b_grad->shape[i];
+    }
+    memsetf(b_grad->data, 0.0, b_grad->data_len);
+    for (usize j = 0; j < n_concats; j++) {
+        usize b_offset = 0, r_offset = 0;
+        for (u32 i = 0; i < concat_dim; i++) {
+            b_offset += idx[i] * b_grad->stride[i];
+            r_offset += idx[i] * result_grad->stride[i];
+        }
+
+        vadd(&b_grad->data[b_offset], &result_grad->data[r_offset + a_copylen], &b_grad->data[b_offset], b_copylen);
+
+        for (i32 i = ((i32)concat_dim) - 1; i >= 0; i--) {
+            idx[i]++;
+            if (idx[i] < result_grad->shape[i]) {
+                break;
+            } else {
+                idx[i] = 0;
+            }
+        }
     }
 }

@@ -354,3 +354,243 @@ void test_bwd_perf(f32 lr, u32 hidden_size, u32 bs, u32 io_dim, u32 n_batches, u
     gradt_destroy_arena();
     arena_destroy(permanent_arena);
 }
+
+void test_split_views() {
+    printf("test_split_views\n");
+    arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
+    gradt_set_arena(arena);
+
+    u32 shape[4] = {1, 4, 2, 3};
+    GradTensor* gt = gradt_create(shape, 4);
+
+    for (usize i = 0; i < gt->tens->data_len; i++) {
+        gt->tens->data[i] = (f32)i;
+        gt->grad->data[i] = (f32)(i + 100);
+    }
+
+    GradTensor** views = gradt_create_split_views(gt, 1);
+    if (views == NULL) {
+        printf("    gradt_create_split_views returned NULL\n");
+        goto cleanup;
+    }
+
+    for (u32 i = 0; i < 4; i++) {
+        GradTensor* v = views[i];
+
+        if (v->tens->data_len != 6) {
+            printf("    views[%u] tens has wrong data_len %lu\n", i, v->tens->data_len);
+            goto cleanup;
+        }
+        if (v->grad->data_len != 6) {
+            printf("    views[%u] grad has wrong data_len %lu\n", i, v->grad->data_len);
+            goto cleanup;
+        }
+
+        if (v->tens->shape[0] != 1 || v->tens->shape[1] != 1 ||
+            v->tens->shape[2] != gt->tens->shape[2] || v->tens->shape[3] != gt->tens->shape[3]) {
+            printf("    views[%u] tens has incorrect shape (%u, %u, %u, %u)\n",
+                   i, v->tens->shape[0], v->tens->shape[1], v->tens->shape[2], v->tens->shape[3]);
+            goto cleanup;
+        }
+
+        if (v->grad->shape[0] != 1 || v->grad->shape[1] != 1 ||
+            v->grad->shape[2] != gt->grad->shape[2] || v->grad->shape[3] != gt->grad->shape[3]) {
+            printf("    views[%u] grad has incorrect shape (%u, %u, %u, %u)\n",
+                   i, v->grad->shape[0], v->grad->shape[1], v->grad->shape[2], v->grad->shape[3]);
+            goto cleanup;
+        }
+
+        if (v->tens->stride[0] != 0 || v->tens->stride[1] != 0 ||
+            v->tens->stride[2] != gt->tens->stride[2] || v->tens->stride[3] != gt->tens->stride[3]) {
+            printf("    views[%u] tens has incorrect stride (%u, %u, %u, %u)\n",
+                   i, v->tens->stride[0], v->tens->stride[1], v->tens->stride[2], v->tens->stride[3]);
+            goto cleanup;
+        }
+
+        if (v->grad->stride[0] != 0 || v->grad->stride[1] != 0 ||
+            v->grad->stride[2] != gt->grad->stride[2] || v->grad->stride[3] != gt->grad->stride[3]) {
+            printf("    views[%u] grad has incorrect stride (%u, %u, %u, %u)\n",
+                   i, v->grad->stride[0], v->grad->stride[1], v->grad->stride[2], v->grad->stride[3]);
+            goto cleanup;
+        }
+
+        for (u32 j = 0; j < v->tens->data_len; j++) {
+            usize t_idx = i * 6 + j;
+            if (v->tens->data[j] != gt->tens->data[t_idx]) {
+                printf("    views[%u] tens[%u] != gt->tens[%lu], %f != %f\n",
+                       i, j, t_idx, v->tens->data[j], gt->tens->data[t_idx]);
+                goto cleanup;
+            }
+            if (v->grad->data[j] != gt->grad->data[t_idx]) {
+                printf("    views[%u] grad[%u] != gt->grad[%lu], %f != %f\n",
+                       i, j, t_idx, v->grad->data[j], gt->grad->data[t_idx]);
+                goto cleanup;
+            }
+        }
+    }
+
+    printf("    test_split_views PASSED\n");
+
+cleanup:
+    gradt_destroy_arena();
+}
+
+static usize idx4(const u32* stride, u32 d0, u32 d1, u32 d2, u32 d3) {
+    return d0 * stride[0] + d1 * stride[1] + d2 * stride[2] + d3 * stride[3];
+}
+
+static bool test_concat_dim(u32* a_shape, u32* b_shape, u32 concat_dim) {
+    GradTensor* a = gradt_create(a_shape, 4);
+    GradTensor* b = gradt_create(b_shape, 4);
+
+    for (u32 i = 0; i < a->tens->data_len; i++) {
+        a->tens->data[i] = (f32)i;
+        a->grad->data[i] = 0.0f;
+    }
+    for (u32 i = 0; i < b->tens->data_len; i++) {
+        b->tens->data[i] = (f32)(i * 10 + i);
+        b->grad->data[i] = 0.0f;
+    }
+
+    GradTensor* c = gradt_concat(a, b, concat_dim);
+    if (c == NULL) {
+        printf("    concat(%u) returned NULL\n", concat_dim);
+        return false;
+    }
+
+    u32 exp_shape[4];
+    for (u32 i = 0; i < 4; i++) {
+        if (i < concat_dim)
+            exp_shape[i] = a_shape[i] > b_shape[i] ? a_shape[i] : b_shape[i];
+        else if (i == concat_dim)
+            exp_shape[i] = a_shape[i] + b_shape[i];
+        else
+            exp_shape[i] = a_shape[i];
+    }
+    for (u32 i = 0; i < 4; i++) {
+        if (c->tens->shape[i] != exp_shape[i]) {
+            printf("    concat(%u) bad shape (%u,%u,%u,%u) expected (%u,%u,%u,%u)\n", concat_dim,
+                   c->tens->shape[0], c->tens->shape[1], c->tens->shape[2], c->tens->shape[3],
+                   exp_shape[0], exp_shape[1], exp_shape[2], exp_shape[3]);
+            return false;
+        }
+    }
+
+    bool ok = true;
+
+    // verify forward: iterate over all elements of the result
+    for (u32 d0 = 0; d0 < c->tens->shape[0] && ok; d0++) {
+        for (u32 d1 = 0; d1 < c->tens->shape[1] && ok; d1++) {
+            for (u32 d2 = 0; d2 < c->tens->shape[2] && ok; d2++) {
+                for (u32 d3 = 0; d3 < c->tens->shape[3] && ok; d3++) {
+                    u32 coord[4] = {d0, d1, d2, d3};
+                    usize c_idx = idx4(c->tens->stride, d0, d1, d2, d3);
+
+                    if (coord[concat_dim] < a_shape[concat_dim]) {
+                        usize a_idx = idx4(a->tens->stride, d0, d1, d2, d3);
+                        if (c->tens->data[c_idx] != a->tens->data[a_idx]) {
+                            printf("    concat(%u) FAIL fwd a at (%u,%u,%u,%u): got %f, expected %f\n",
+                                   concat_dim, d0, d1, d2, d3, c->tens->data[c_idx], a->tens->data[a_idx]);
+                            ok = false;
+                        }
+                    } else {
+                        u32 b_coord[4] = {d0, d1, d2, d3};
+                        b_coord[concat_dim] -= a_shape[concat_dim];
+                        usize b_idx = idx4(b->tens->stride, b_coord[0], b_coord[1], b_coord[2], b_coord[3]);
+                        if (c->tens->data[c_idx] != b->tens->data[b_idx]) {
+                            printf("    concat(%u) FAIL fwd b at (%u,%u,%u,%u): got %f, expected %f\n",
+                                   concat_dim, d0, d1, d2, d3, c->tens->data[c_idx], b->tens->data[b_idx]);
+                            ok = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    printf("    concat(%u) fwd %s\n", concat_dim, ok ? "PASS" : "FAIL");
+
+    // backward: set result grad to known values, run op_bwd, check a/b grads
+    for (usize i = 0; i < c->grad->data_len; i++) {
+        c->grad->data[i] = (f32)(i + 500);
+    }
+
+    op_bwd(&c->op);
+
+    // build expected grads by accumulating over broadcast dims
+    f32* a_expect = calloc(a->grad->data_len, sizeof(f32));
+    f32* b_expect = calloc(b->grad->data_len, sizeof(f32));
+
+    for (u32 d0 = 0; d0 < c->tens->shape[0]; d0++) {
+        for (u32 d1 = 0; d1 < c->tens->shape[1]; d1++) {
+            for (u32 d2 = 0; d2 < c->tens->shape[2]; d2++) {
+                for (u32 d3 = 0; d3 < c->tens->shape[3]; d3++) {
+                    u32 coord[4] = {d0, d1, d2, d3};
+                    usize c_idx = idx4(c->grad->stride, d0, d1, d2, d3);
+
+                    if (coord[concat_dim] < a_shape[concat_dim]) {
+                        u32 ac[4] = {d0, d1, d2, d3};
+                        for (u32 k = 0; k < 4; k++) {
+                            if (a_shape[k] == 1) ac[k] = 0;
+                        }
+                        usize a_idx = idx4(a->grad->stride, ac[0], ac[1], ac[2], ac[3]);
+                        a_expect[a_idx] += c->grad->data[c_idx];
+                    } else {
+                        u32 bc[4] = {d0, d1, d2, d3};
+                        bc[concat_dim] -= a_shape[concat_dim];
+                        for (u32 k = 0; k < 4; k++) {
+                            if (b_shape[k] == 1) bc[k] = 0;
+                        }
+                        usize b_idx = idx4(b->grad->stride, bc[0], bc[1], bc[2], bc[3]);
+                        b_expect[b_idx] += c->grad->data[c_idx];
+                    }
+                }
+            }
+        }
+    }
+
+    bool bwd_ok = true;
+    for (usize i = 0; i < a->grad->data_len && bwd_ok; i++) {
+        if (fabsf(a->grad->data[i] - a_expect[i]) > 1e-3f) {
+            printf("    concat(%u) FAIL bwd a grad at flat %zu: got %f, expected %f\n",
+                   concat_dim, i, a->grad->data[i], a_expect[i]);
+            bwd_ok = false;
+        }
+    }
+    for (usize i = 0; i < b->grad->data_len && bwd_ok; i++) {
+        if (fabsf(b->grad->data[i] - b_expect[i]) > 1e-3f) {
+            printf("    concat(%u) FAIL bwd b grad at flat %zu: got %f, expected %f\n",
+                   concat_dim, i, b->grad->data[i], b_expect[i]);
+            bwd_ok = false;
+        }
+    }
+
+    free(a_expect);
+    free(b_expect);
+
+    printf("    concat(%u) bwd %s\n", concat_dim, bwd_ok ? "PASS" : "FAIL");
+    return ok && bwd_ok;
+}
+
+void test_concat() {
+    printf("test_concat\n");
+    arena_allocator* arena = arena_create(GiB(1), MiB(1), 8);
+    gradt_set_arena(arena);
+
+    // no broadcasting
+    u32 a3[] = {1, 2, 3, 4}, b3[] = {1, 2, 3, 5};
+    test_concat_dim(a3, b3, 3);
+
+    u32 a2[] = {1, 2, 1, 4}, b2[] = {1, 2, 3, 4};
+    test_concat_dim(a2, b2, 2);
+
+    // broadcasting on dims before concat_dim
+    u32 a1[] = {1, 2, 1, 4}, b1[] = {1, 1, 3, 4};
+    test_concat_dim(a1, b1, 3);
+
+    u32 a0[] = {2, 1, 3, 4}, b0[] = {1, 2, 3, 4};
+    test_concat_dim(a0, b0, 2);
+
+    gradt_destroy_arena();
+}
+

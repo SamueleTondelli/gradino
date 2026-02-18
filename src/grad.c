@@ -98,6 +98,32 @@ GradTensor* gradt_create_nograd(u32* shape, usize shape_len) {
     return gt;
 }
 
+GradTensor** gradt_create_split_views(const GradTensor* gt, u32 split_dim) {
+    if (split_dim >= 4) {
+        return NULL;
+    }
+    Tensor** tens_views = tensor_create_split_views(gt->tens, split_dim, gradt_arena);
+    Tensor** grad_views = gt->grad == NULL ? NULL : tensor_create_split_views(gt->grad, split_dim, gradt_arena);
+    GradTensor** views = arena_alloc(gradt_arena, sizeof(GradTensor*), gt->tens->shape[split_dim]);
+    for (u32 i = 0; i < gt->tens->shape[split_dim]; i++) {
+        views[i] = arena_alloc(gradt_arena, sizeof(GradTensor), 1);
+        GradTensor* v = views[i];
+        v->tens = tens_views[i];
+        if (grad_views != NULL) {
+            v->grad = grad_views[i];
+        } else {
+            v->grad = NULL;
+        }
+        v->prev_grad = NULL;
+        op_set_nop(&v->op, v);
+        v->optimize = gt->optimize;
+        v->_grad_computed = false;
+        v->_first_moment = NULL;
+        v->_second_moment = NULL;
+    }
+    return views;
+}
+
 void gradt_enable_optim(GradTensor* gt) {
     gt->optimize = true;
     gt->prev_grad = tensor_create(gt->tens->shape, 4, gradt_arena);
@@ -178,9 +204,17 @@ GradTensor* gradt_tanh(GradTensor* src) {
     return result;
 }
 
+GradTensor* gradt_concat(GradTensor* gt1, GradTensor* gt2, u32 concat_dim) {
+    Tensor* c_t = tensor_concat(gt1->tens, gt2->tens, concat_dim, gradt_arena);
+    GradTensor* c = gradt_create_from_tens(c_t);
+    op_set_concat(&c->op, gt1, gt2, c);
+    return c;
+}
+
 void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
     if (gt->tens->data_len != 1) {
         printf("Only scalar tensors allowed in backward, got %lu length\n", gt->tens->data_len);
+        return;
     }
     tensor_set(gt->grad, 1.0);
     

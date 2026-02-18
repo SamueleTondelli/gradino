@@ -207,6 +207,7 @@ void op_set_mul_elemwise(Op* op, struct GradTensor_struct* src1, struct GradTens
     op->type = Binary;
     op->op.bin.src1 = src1;
     op->op.bin.src2 = src2;
+    op->op.bin.dst = dst;
     op->op.bin.fwd = mul_elemwise_fwd;
     op->op.bin.bwd_src1 = mul_elemwise_bwd_src1;
     op->op.bin.bwd_src2 = mul_elemwise_bwd_src2;

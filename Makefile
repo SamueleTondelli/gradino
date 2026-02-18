@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -g -Iinclude -mavx512f
-CFLAGS += -O3
+# CFLAGS += -O3
 # CFLAGS += -lprofiler 
 # CFLAGS += -fsanitize=address,undefined -O0 -g -fno-omit-frame-pointer
 

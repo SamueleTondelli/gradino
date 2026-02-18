@@ -122,6 +122,7 @@ static inline void mmul_6x16(const f32* a, const f32* b, f32* res, u32 a_cols, u
 // https://salykova.github.io/gemm-cpu
 static void matmul_tile6x16(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
     u32 n, m;
+    #pragma omp parallel for
     for (u32 i = 0; i < a_rows; i += 6) {
         n = (a_rows - i) >= 6 ? 6 : (a_rows - i);
         for (u32 j = 0; j < b_cols; j += 16) {
@@ -241,6 +242,7 @@ static void mmul_6x16_at(const f32* a, const f32* b, f32* res, u32 at_rows, u32 
 }
 
 static void matmul_at(const f32* a, const f32* b, f32* res, u32 at_rows, u32 at_cols, u32 b_cols) {
+    #pragma omp parallel for
     for (u32 i = 0; i < at_rows; i += 6) {
         u32 n = (at_rows - i) >= 6 ? 6 : (at_rows - i);
         for (u32 j = 0; j < b_cols; j += 16) {
@@ -277,6 +279,7 @@ void _tensor_kernel_mul_at(const Tensor* a, const Tensor* b, Tensor* result) {
 
 static void matmul_bt(const f32* a, const f32* b, f32* res, u32 a_rows, u32 a_cols, u32 b_cols) {
     u32 vecs = a_cols / 16;
+    #pragma omp parallel for
     for (u32 i = 0; i < a_rows; i++) {
         for (u32 j = 0; j < b_cols; j++) {
             u32 k = 0;

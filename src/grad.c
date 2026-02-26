@@ -211,6 +211,38 @@ GradTensor* gradt_concat(GradTensor* gt1, GradTensor* gt2, u32 concat_dim) {
     return c;
 }
 
+f32 gradt_compute_accuracy(GradTensor* src, GradTensor* truth) {
+    Tensor* s = src->tens;
+    Tensor* t = truth->tens;
+    for (u32 i = 0; i < 4; i++) {
+        if (s->shape[i] != t->shape[i]) {
+            printf("gradt_compute_accuracy: shape mismatch at dim %u: %u vs %u\n", i, s->shape[i], t->shape[i]);
+            exit(1);
+        }
+    }
+    u32 n_samples = s->shape[2];
+    u32 n_classes = s->shape[3];
+    u32 correct = 0;
+    for (u32 i = 0; i < n_samples; i++) {
+        u32 pred_class = 0;
+        u32 true_class = 0;
+        f32 pred_max = s->data[i * n_classes];
+        f32 true_max = t->data[i * n_classes];
+        for (u32 c = 1; c < n_classes; c++) {
+            if (s->data[i * n_classes + c] > pred_max) {
+                pred_max = s->data[i * n_classes + c];
+                pred_class = c;
+            }
+            if (t->data[i * n_classes + c] > true_max) {
+                true_max = t->data[i * n_classes + c];
+                true_class = c;
+            }
+        }
+        if (pred_class == true_class) correct++;
+    }
+    return (f32)correct / (f32)n_samples;
+}
+
 void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config) {
     if (gt->tens->data_len != 1) {
         printf("Only scalar tensors allowed in backward, got %lu length\n", gt->tens->data_len);

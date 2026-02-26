@@ -45,5 +45,6 @@ GradTensor* gradt_tanh(GradTensor* src);
 GradTensor* gradt_concat(GradTensor* gt1, GradTensor* gt2, u32 concat_dim);
 
 void gradt_backward(GradTensor* gt, Optimizer optim, void* optim_config);
+f32 gradt_compute_accuracy(GradTensor* src, GradTensor* truth);
 
 #endif

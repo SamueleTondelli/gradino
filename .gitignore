@@ -3,3 +3,5 @@ gradino
 .gdb_history
 perf*
 *.svg
+examples/datasets/*
+examples/bin

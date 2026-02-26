@@ -112,6 +112,11 @@ void tensor_set(Tensor* t, f32 v) {
     }
 }
 
+void tensor_set_buffer(Tensor* t, f32* buffer, usize length) {
+    usize copylen = length <= t->data_len ? length : t->data_len;
+    memcpy(t->data, buffer, copylen * sizeof(f32));  
+}
+
 Tensor* tensor_add(const Tensor* a, const Tensor* b, arena_allocator* arena) {
     u32 target_shape[4];
     for (int i = 0; i < 4; i++) {

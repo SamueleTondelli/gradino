@@ -21,6 +21,7 @@ void tensor_print(const Tensor* t, bool print_data);
 void tensor_randomize(Tensor* t, f32 min, f32 max);
 void tensor_randomize_gaussian(Tensor* t, f32 mean, f32 variance);
 void tensor_set(Tensor* t, f32 v);
+void tensor_set_buffer(Tensor* t, f32* buffer, usize length);
 
 Tensor* tensor_add(const Tensor* a, const Tensor* b, arena_allocator* arena);
 Tensor* tensor_mul(const Tensor* a, const Tensor* b, arena_allocator* arena);

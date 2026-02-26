@@ -207,7 +207,7 @@ GradTensor* gradt_tanh(GradTensor* src) {
 GradTensor* gradt_concat(GradTensor* gt1, GradTensor* gt2, u32 concat_dim) {
     Tensor* c_t = tensor_concat(gt1->tens, gt2->tens, concat_dim, gradt_arena);
     GradTensor* c = gradt_create_from_tens(c_t);
-    op_set_concat(&c->op, gt1, gt2, c);
+    op_set_concat(&c->op, gt1, gt2, c, concat_dim);
     return c;
 }
 

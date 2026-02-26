@@ -65,7 +65,7 @@ void _tensor_kernel_tanh_bwd(Tensor* src_grad, const Tensor* result, const Tenso
 void _tensor_kernel_mul_scalar(const Tensor* src, f32 v, Tensor* result);
 void _tensor_kernel_adam_update(Tensor* param, const Tensor* m1_scaled, const Tensor* m2_scaled, f32 epsilon, f32 lr);
 void _tensor_kernel_concat(const Tensor* a, const Tensor* b, u32 concat_dim, Tensor* result);
-void _tensor_kernel_concat_bwd_a(Tensor* a_grad, const Tensor* b, const Tensor* result_grad);
-void _tensor_kernel_concat_bwd_b(const Tensor* a, Tensor* b_grad, const Tensor* result_grad);
+void _tensor_kernel_concat_bwd_a(Tensor* a_grad, const Tensor* b, const Tensor* result_grad, u32 concat_dim);
+void _tensor_kernel_concat_bwd_b(const Tensor* a, Tensor* b_grad, const Tensor* result_grad, u32 concat_dim);
 
 #endif

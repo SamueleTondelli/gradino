@@ -651,14 +651,7 @@ static inline void memsetf(f32 *p, f32 v, usize n) {
     }
 }
 
-void _tensor_kernel_concat_bwd_a(Tensor* a_grad, const Tensor* b, const Tensor* result_grad) {
-    u32 concat_dim = 0;
-    for (; concat_dim < 4; concat_dim++) {
-        if (a_grad->shape[concat_dim] + b->shape[concat_dim] == result_grad->shape[concat_dim]) {
-            break;
-        }
-    }
-
+void _tensor_kernel_concat_bwd_a(Tensor* a_grad, const Tensor* b, const Tensor* result_grad, u32 concat_dim) {
     u32 idx[4] = {0, 0, 0, 0};
     usize n_concats = 1;
     for (u32 i = 0; i < concat_dim; i++) {
@@ -690,14 +683,7 @@ void _tensor_kernel_concat_bwd_a(Tensor* a_grad, const Tensor* b, const Tensor* 
     }
 }
 
-void _tensor_kernel_concat_bwd_b(const Tensor* a, Tensor* b_grad, const Tensor* result_grad) {
-    u32 concat_dim = 0;
-    for (; concat_dim < 4; concat_dim++) {
-        if (a->shape[concat_dim] + b_grad->shape[concat_dim] == result_grad->shape[concat_dim]) {
-            break;
-        }
-    }
-
+void _tensor_kernel_concat_bwd_b(const Tensor* a, Tensor* b_grad, const Tensor* result_grad, u32 concat_dim) {
     u32 idx[4] = {0, 0, 0, 0};
     usize n_concats = 1;
     for (u32 i = 0; i < concat_dim; i++) {

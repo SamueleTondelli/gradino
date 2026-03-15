@@ -16,7 +16,7 @@ const u32 N_CLASSES = 6;
 const u32 HIDDEN_SIZE = 64;
 const f32 LEARNING_RATE = 1e-3;
 const f32 WEIGHT_DECAY = 1e-4;
-const u32 EPOCHS = 1;
+const u32 EPOCHS = 50;
 
 typedef enum: u32 {
     WALKING = 0,
@@ -81,8 +81,6 @@ int main() {
 
     u32* test_users = user_ids;
     u32* val_users = &user_ids[N_TEST_USERS];
-    u32* train_users = &user_ids[N_TEST_USERS + N_VAL_USERS];
-    u32 n_train_users = n_users - N_TEST_USERS - N_VAL_USERS;
 
     u32 train_count = 0, val_count = 0, test_count = 0;
     for (u32 i = 0; i < count; i++) {
@@ -131,7 +129,6 @@ int main() {
     u32 train_label_batches_size;
     GradTensor** train_label_b = create_label_batches(train_labels, n_train_seqs, &train_label_batches_size, permanent_arena);
     printf("Train batches: %u, Label batches: %u\n", train_batches_size, train_label_batches_size);
-    tensor_print(train_batches[0]->tens, false);
 
     u32 val_batches_size;
     GradTensor** val_batches = create_batches(val_seqs, n_val_seqs, &val_batches_size, permanent_arena);

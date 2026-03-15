@@ -24,11 +24,13 @@ void op_bwd(Op* op) {
                 op->op.mono.bwd(src, dst, op->args);
                 src->_grad_computed = true;
             } else {
-                // goofy shit
-                Tensor* old_grad = src->grad;
-                src->grad = tensor_create(src->grad->shape, 4, _gradt_get_arena());
+                Tensor* accum = src->grad;
+                Tensor* delta = tensor_create(accum->shape, 4, _gradt_get_arena());
+                tensor_set(delta, 0.0f);
+                src->grad = delta;
                 op->op.mono.bwd(src, dst, op->args);
-                _tensor_kernel_add(old_grad, src->grad, src->grad);
+                _tensor_kernel_add(accum, delta, accum);
+                src->grad = accum;
             }
         }
     } else {
@@ -40,10 +42,13 @@ void op_bwd(Op* op) {
                 op->op.bin.bwd_src1(src1, src2, dst, op->args);
                 src1->_grad_computed = true;
             } else {
-                Tensor* old_grad = src1->grad;
-                src1->grad = tensor_create(src1->grad->shape, 4, _gradt_get_arena());
+                Tensor* accum = src1->grad;
+                Tensor* delta = tensor_create(accum->shape, 4, _gradt_get_arena());
+                tensor_set(delta, 0.0f);
+                src1->grad = delta;
                 op->op.bin.bwd_src1(src1, src2, dst, op->args);
-                _tensor_kernel_add(old_grad, src1->grad, src1->grad);
+                _tensor_kernel_add(accum, delta, accum);
+                src1->grad = accum;
             }
         }
         if (src2->grad != NULL && dst->grad != NULL) {
@@ -51,10 +56,13 @@ void op_bwd(Op* op) {
                 op->op.bin.bwd_src2(src1, src2, dst, op->args);
                 src2->_grad_computed = true;
             } else {
-                Tensor* old_grad = src2->grad;
-                src2->grad = tensor_create(src2->grad->shape, 4, _gradt_get_arena());
+                Tensor* accum = src2->grad;
+                Tensor* delta = tensor_create(accum->shape, 4, _gradt_get_arena());
+                tensor_set(delta, 0.0f);
+                src2->grad = delta;
                 op->op.bin.bwd_src2(src1, src2, dst, op->args);
-                _tensor_kernel_add(old_grad, src2->grad, src2->grad);
+                _tensor_kernel_add(accum, delta, accum);
+                src2->grad = accum;
             }
         }
     }
